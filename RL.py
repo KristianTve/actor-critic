@@ -1,10 +1,10 @@
 import numpy as np
 import random
 
-class RL():
+class RL:
 
     def __init__(self):
-        self.P = {}      # Dictionary for values associated with possible STATE & ACTION pairs
+        self.P = {}      # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
         self.V = {}     # Dictionary for critic evaluations of STATES
 
         self.aE = {}      # Eligibilities for the actor state, value pairs
