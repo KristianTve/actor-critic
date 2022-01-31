@@ -16,7 +16,7 @@ class RL:
 
 
 
-    def actor_critic(self, get_state, get_actions, state_size, action_space, episodes, time_steps, lr):
+    def actor_critic(self, get_state, get_actions, do_action, episodes, time_steps, lr, reset, finished):
         """
         This method should receive the current state and the possible actions as input
 
@@ -30,79 +30,88 @@ class RL:
         @param episodes - Number of episodes
         @param time_steps - Number of timesteps in an episode
         """
-        # TODO LIST
-        # Rework the indexing?
 
-        action = 0   # Current action
         init_state = get_state()
         init_actions = get_actions()
+        action = 0
+        state = init_state
+        action_prime = 0
+        state_prime = 0
+        TD_error = 0
 
+        """*** Initializing V(s) and P(s,a) ***"""
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
-        self.P[]
-        for i in range(state_size):
-            for j in range(action_space):
-                self.P[i.toString()+","+j.toString()] = random.uniform(0, 3)  # State, action value initialization
+        for action in range(len(init_actions)):
+            self.P[self.keyify(init_state, init_actions[action])] = 0 # State, action value initialization
 
         # Initialize V(s) with small random values   (critic)
-        self
-        for i in range(state_size):
-            self.V[i.toString()] = random.uniform(0, 3)  # Action value/probability initialization
+        self.V[self.keyify(init_state)] = random.uniform(0, 3)
+        """************************************"""
 
         for _ in range(episodes):
+            state_action_buffer = []
+            state_buffer = []
 
             # Reset eligibilities for the actor and critic
-            for i in range(state_size):
-                for j in range(action_space):
-                    self.aE[i.toString() + "," + j.toString()] = 0
+            self.aE[i] = {0 for i in self.P.keys()}  #
 
             # Reset eligibility with small    (critic)
-            for i in range(state_size):
-                self.cE[i.toString()] = 0
+            self.cE[i] = {0 for i in self.V.keys()}     #
 
-            # Initialize both state and available actions
-            for i in range(state_size):
-                for j in range()
-            # TODO: Trigger the models initialization for state and actions
+            reset()     # Resets the problem space for a new episode
+            state = init_state  # Transfers initial state to recursive variable
+            # Selecting best initial action by the policy
+            action = self.select_best_action(init_state, init_actions)
 
             # Repeat for every step of the episode
             for _ in range(time_steps):
-                # TODO Do action a from state s, moving the system to state s' and receiving reinforcement r
+                # Perform action and receive s' and new possible actions
+                state_prime, new_actions, reward = do_action(action)
+                state_buffer.append(self.keyify(state))                     # Saves the state to buffer/trail
+                state_action_buffer.append(self.keyify(state, action))      # Saves the state and action to buffer/trail
 
-                # TODO ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
+                # ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
+                action_prime = self.select_best_action(state_prime, new_actions)
 
-                # ACTOR: e(s,a) <-- 1 (update eligibility for actor to 1)
-                self.aE["1,1"] = 1  # TODO Exchange "1,1" with state, action index
+                # ACTOR: e(s,a) <-- 1 (update eligibility for policy to 1)
+                self.aE[self.keyify(state, action)] = 1
 
-                # TODO CRITIC: Calculated temporal difference error (reward + discount*V(s') - V(s))
+                # CRITIC: Calculated temporal difference error (reward + discount*V(s') - V(s))
+                TD_error = reward + self.discount*self.V[self.keyify(state_prime)] - self.V[self.keyify(state)]
 
                 # CRITIC e(s) <-- 1 (Eligibility is set to 0 for current state)
-                self.aE["1"] = 1  # TODO Exchange "1" with state index
+                self.aE[self.keyify(state)] = 1
 
                 # For all states and actions in the current episode
-                for i in range(state_size):
-                    for j in range(action_space):
+                for st in state_buffer:
+                    # CRITIC: Calculate new value for state S  V(s) <-- V(s) + lr*TDerror*eligibility(s)
+                    self.V[st] += lr * TD_error * self.cE[st]
 
-                        # CRITIC: Calculate new value for state S  V(s) <-- V(s) + lr*TDerror*eligibility(s)
-                        # TODO Calculate TD error
-                        self.V[i.toString()] += lr*["TEMPORAL DIFFERENCE ERROR HERE"]*self.cE[i.toString()]
+                    # CRITIC: Calculate new (lower) eligibility for state
+                    self.cE[st] = self.discount * self.trace_decay * self.cE[st]
 
-                        # CRITIC: Calculate new (lower) eligibility for state
-                        self.cE[i.toString()] = self.discount*self.trace_decay*self.cE[i.toString()]
+                for sta in state_action_buffer:
+                    # ACTOR: Calculate the new value for Π(s,a)
+                    self.P[sta] += lr*TD_error*self.aE[sta]
 
-                        # ACTOR: Calculate the new value for Π(s,a) TODO Calculate TD error
-                        self.P[i.toString()+","+j.toString()] += lr*["TD ERROR HERE"]*self.aE[i.toString()+","+j.toString()]
+                    # ACTOR: Calculate the new lower eligibility
+                    self.aE[sta] = self.discount*self.trace_decay*self.aE[sta]
 
-                        # ACTOR: Calculate the new lower eligibility
-                        self.aE[i.toString()+","+j.toString()] = self.discount*self.trace_decay*self.aE[i.toString()+","+j.toString()]
+                # Update s <-- s' and a <-- a'
+                state = state_prime
+                action = action_prime
 
-                # TODO Update s <-- s' and a <-- a'
-                # state = newState
-                # action = newAction
-
-                # TODO is S end state?
-                # Check with model
+                if finished():      # Found the solution (s is the end state)
+                    break
 
 
+    def keyify(self, state, actions = None):
+        return str(state.flatten()) if not actions else str(state.flatten()) + str(actions)
 
-
+    def select_best_action(self, state, actions):
+        best_action = 0
+        for action in actions:
+            if self.P[self.keyify(state, action)] >= best_action:
+                best_action = self.P[self.keyify(state, action)]
+        return best_action
 

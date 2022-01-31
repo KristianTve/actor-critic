@@ -15,10 +15,7 @@ class hanoi:
         [1  0  0]
         [2  0  0]
         [3  0  0]
-        [4  0  0]
-        
-        Gyldig move:
-        
+        [4  0  0]        
         """
         self.peg = np.zeros((self.n_discs, self.n_pegs))
         self.peg[0, 0] = 1
@@ -26,10 +23,18 @@ class hanoi:
         self.peg[2, 0] = 3
         self.peg[3, 0] = 4
 
-    def step(self, action):
-        disc =    action[0]
-        toPeg =   action[2]
+        # Final state:
+        self.final = np.zeros((self.n_discs, self.n_pegs))
+        self.final[0, self.n_pegs-1] = 1
+        self.final[1, self.n_pegs-1] = 2
+        self.final[2, self.n_pegs-1] = 3
+        self.final[3, self.n_pegs-1] = 4
 
+    def step(self, action):
+        disc =    action[0]     # Extracting disc number
+        toPeg =   action[2]     # Extracting end peg
+
+        reward = self.reward(self.peg)
         # Each step is punished by 1 (or float)
         # If steps > X - game is over (300 steps)
         # Give large reward when completing
@@ -38,6 +43,9 @@ class hanoi:
         # Perform action requested: [disc, fromPeg, toPeg]
         self.remove_disc(disc)       # Removes disc from original position
         self.put_disc(toPeg, disc)  # Puts disc on given peg (first available spot)
+
+        #Return available actions and reward!!
+        return self.peg, self.get_moves(), reward
 
     def put_disc(self, endPeg, disc):
         """
@@ -51,8 +59,16 @@ class hanoi:
     def remove_disc(self, disc):
         self.peg[self.peg == disc] = 0
 
-    def reward(self):
-        pass
+    def reward(self, state):
+        return 0  # Insert intelligent reward logic here
+
+    # Check if the state is final
+    def is_final(self, state):
+        if state == self.final:
+            return True
+        else:
+            return False
+
 
     def get_moves(self):
         """
@@ -98,3 +114,11 @@ class hanoi:
 
     def print_problem(self):
         print(self.peg)
+
+    def reset_problem(self):
+        self.peg = np.zeros((self.n_discs, self.n_pegs))
+        self.peg[0, 0] = 1
+        self.peg[1, 0] = 2
+        self.peg[2, 0] = 3
+        self.peg[3, 0] = 4
+

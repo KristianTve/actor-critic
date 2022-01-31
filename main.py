@@ -5,8 +5,8 @@ import numpy as np
 if __name__ == '__main__':
     hano = hanoi()
     #rl = RL()
-    #rl.actor_critic(hano.get_state, hano.get_moves, 64, 120, 50, 200, 0.2)
-
+    #rl.actor_critic(hano.get_state, hano.get_moves, 64, 120, 50, 200, 0.2, hano.reset_problem, step, hano.is_final)
+    action = [2, 3, 1]
     peg = np.zeros((4, 3))
     peg[0, 0] = 1
     peg[1, 0] = 2
@@ -14,15 +14,8 @@ if __name__ == '__main__':
     peg[3, 0] = 4
 
     A = str(peg.flatten())
-    print(A)
 
-    P = {}  # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
-
-    P[A] = "Works"
-    print(P[A])
     #for i in range(10):
     #    hano.step(hano.get_moves()[0])
     #    hano.print_problem()
-
-
 
