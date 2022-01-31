@@ -4,17 +4,19 @@ import random
 class RL:
 
     def __init__(self):
-        self.P = {}      # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
-        self.V = {}     # Dictionary for critic evaluations of STATES
+        self.P = {}       # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
+        self.V = {}       # Dictionary for critic evaluations of STATES
 
         self.aE = {}      # Eligibilities for the actor state, value pairs
-        self.cE = {}     # Eligibilities for the critic states
+        self.cE = {}      # Eligibilities for the critic states
 
         self.discount = 0.99     # Discount factor
         self.trace_decay = 0.85  # Factor for decaying trace updates
         self.epsilon = 0.10      # Epsilon greedy factor probability for choosing a random action
 
-    def actor_critic(self, env, state, state_size, action_space, episodes, time_steps, lr):
+
+
+    def actor_critic(self, get_state, get_actions, state_size, action_space, episodes, time_steps, lr):
         """
         This method should receive the current state and the possible actions as input
 
@@ -32,14 +34,17 @@ class RL:
         # Rework the indexing?
 
         action = 0   # Current action
-
+        init_state = get_state()
+        init_actions = get_actions()
 
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
+        self.P[]
         for i in range(state_size):
             for j in range(action_space):
                 self.P[i.toString()+","+j.toString()] = random.uniform(0, 3)  # State, action value initialization
 
         # Initialize V(s) with small random values   (critic)
+        self
         for i in range(state_size):
             self.V[i.toString()] = random.uniform(0, 3)  # Action value/probability initialization
 
