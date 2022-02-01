@@ -1,11 +1,11 @@
 from Hanoi import hanoi
 import numpy as np
-#from RL import RL
+from RL import RL
 
 if __name__ == '__main__':
     hano = hanoi()
-    #rl = RL()
-    #rl.actor_critic(hano.get_state, hano.get_moves, 64, 120, 50, 200, 0.2, hano.reset_problem, step, hano.is_final)
+    rl = RL()
+    rl.actor_critic(hano.get_state, hano.get_moves, hano.step, hano.reset_problem, hano.is_final, 50, 300, 0.2 )
     action = [2, 3, 1]
     peg = np.zeros((4, 3))
     peg[0, 0] = 1

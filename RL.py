@@ -14,9 +14,7 @@ class RL:
         self.trace_decay = 0.85  # Factor for decaying trace updates
         self.epsilon = 0.10      # Epsilon greedy factor probability for choosing a random action
 
-
-
-    def actor_critic(self, get_state, get_actions, do_action, episodes, time_steps, lr, reset, finished):
+    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
         This method should receive the current state and the possible actions as input
 
@@ -53,10 +51,12 @@ class RL:
             state_buffer = []
 
             # Reset eligibilities for the actor and critic
-            self.aE[i] = {0 for i in self.P.keys()}  #
+            for i in self.P.keys():
+                self.aE[i] = 0
 
             # Reset eligibility with small    (critic)
-            self.cE[i] = {0 for i in self.V.keys()}     #
+            for i in self.V.keys():
+                self.cE[i] = 0     #
 
             reset()     # Resets the problem space for a new episode
             state = init_state  # Transfers initial state to recursive variable
