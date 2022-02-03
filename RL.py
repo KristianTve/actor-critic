@@ -1,3 +1,5 @@
+import numbers
+
 import numpy as np
 import random
 
@@ -11,8 +13,8 @@ class RL:
         self.cE = {}      # Eligibilities for the critic states
 
         self.discount = 0.99     # Discount factor
-        self.trace_decay = 0.85  # Factor for decaying trace updates
-        self.epsilon = 0.10      # Epsilon greedy factor probability for choosing a random action
+        self.trace_decay = 0.8  # Factor for decaying trace updates
+        self.epsilon = 0.1      # Epsilon greedy factor probability for choosing a random action
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
@@ -36,17 +38,18 @@ class RL:
         action_prime = 0
         state_prime = 0
         TD_error = 0
+        finished_counter = 0
 
         """*** Initializing V(s) and P(s,a) ***"""
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
-        for action in range(len(init_actions)):
-            self.P[self.keyify(init_state, init_actions[action])] = 0 # State, action value initialization
+        for action in init_actions:
+            self.P[self.keyify(init_state, action)] = 0  # State, action value initialization
 
         # Initialize V(s) with small random values   (critic)
         self.V[self.keyify(init_state)] = random.uniform(0, 3)
         """************************************"""
 
-        for _ in range(episodes):
+        for epi in range(episodes):
             state_action_buffer = []
             state_buffer = []
 
@@ -64,11 +67,26 @@ class RL:
             action = self.select_best_action(init_state, init_actions)
 
             # Repeat for every step of the episode
-            for _ in range(time_steps):
+            for iter in range(time_steps):
                 # Perform action and receive s' and new possible actions
+
                 state_prime, new_actions, reward = do_action(action)
-                state_buffer.append(self.keyify(state))                     # Saves the state to buffer/trail
-                state_action_buffer.append(self.keyify(state, action))      # Saves the state and action to buffer/trail
+                state_buffer.append(self.keyify(state))                     # Saves the state to buffer/trail (path) Keys that have been visited
+                state_action_buffer.append(self.keyify(state, action))      # Saves the state and action to buffer/trail (path) Keys that have been visited
+
+                # Initialize policy when new (non existing) (s, a) pairs
+                for act in range(len(new_actions)):
+                    if not self.keyify(state_prime, new_actions[act]) in self.P:
+                        self.P[self.keyify(state_prime, new_actions[act])] = 0  # State, action value initialization
+                        #self.aE[self.keyify(state_prime, new_actions[act])] = 0     # Initializing eligibility (Actor)
+
+                if not self.keyify(state, action) in self.P:
+                    self.P[self.keyify(state, action)] = 0  # State, action value initialization
+
+                # Initialize critic table for state when it doesnt exist
+                if not self.keyify(state_prime) in self.V:
+                    self.V[self.keyify(state_prime)] = random.uniform(0, 3)
+                    self.cE[self.keyify(state_prime)] = 0  # Initializing eligibility (critic)
 
                 # ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
                 action_prime = self.select_best_action(state_prime, new_actions)
@@ -80,7 +98,7 @@ class RL:
                 TD_error = reward + self.discount*self.V[self.keyify(state_prime)] - self.V[self.keyify(state)]
 
                 # CRITIC e(s) <-- 1 (Eligibility is set to 0 for current state)
-                self.aE[self.keyify(state)] = 1
+                self.cE[self.keyify(state)] = 1
 
                 # For all states and actions in the current episode
                 for st in state_buffer:
@@ -88,30 +106,44 @@ class RL:
                     self.V[st] += lr * TD_error * self.cE[st]
 
                     # CRITIC: Calculate new (lower) eligibility for state
-                    self.cE[st] = self.discount * self.trace_decay * self.cE[st]
+                    self.cE[st] = self.discount * self.trace_decay * self.cE[st]  # Decrease eligibility
 
                 for sta in state_action_buffer:
                     # ACTOR: Calculate the new value for Π(s,a)
                     self.P[sta] += lr*TD_error*self.aE[sta]
 
                     # ACTOR: Calculate the new lower eligibility
-                    self.aE[sta] = self.discount*self.trace_decay*self.aE[sta]
+                    self.aE[sta] = self.discount*self.trace_decay*self.aE[sta]  #  Decrease eligibility
 
                 # Update s <-- s' and a <-- a'
                 state = state_prime
                 action = action_prime
-
-                if finished():      # Found the solution (s is the end state)
+                print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter))
+                print(state)
+                if finished(state):      # Found the solution (s is the end state)
+                    finished_counter += 1
                     break
 
-
-    def keyify(self, state, actions = None):
-        return str(state.flatten()) if not actions else str(state.flatten()) + str(actions)
+    def keyify(self, state, action=None):
+        if isinstance(state, numbers.Integral):
+            return str(state) if not action else str(state) + str(action)
+        else:
+            return str(state.flatten()) if not action else str(state.flatten()) + str(action)
 
     def select_best_action(self, state, actions):
         best_action = 0
-        for action in actions:
-            if self.P[self.keyify(state, action)] >= best_action:
-                best_action = self.P[self.keyify(state, action)]
+        best_action_value = 0
+        random_num = random.randrange(0, 1)
+
+        if not random_num < self.epsilon:
+            for action in actions:
+                if self.P[self.keyify(state, action)] >= best_action_value:
+                    best_action_value = self.P[self.keyify(state, action)]
+                    best_action = action
+        else:
+            return actions[random.randint(0, len(actions) - 1)]
+        #if not best_action:
+        #    return actions[random.randint(0, len(actions)-1)]  # Hack (plz remove)
+        print(best_action)
         return best_action
 

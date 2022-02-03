@@ -8,7 +8,6 @@ class hanoi:
         # hanoi big boi
         self.n_pegs = 3  # Number of positions
         self.n_discs = 4  # Number of discs
-        self.n_states = self.n_pegs * self.n_discs  # Total combinations possible (states)
 
         """
         Looper gjennom finner 0 g
@@ -31,6 +30,7 @@ class hanoi:
         self.final[3, self.n_pegs-1] = 4
 
     def step(self, action):
+
         disc =    action[0]     # Extracting disc number
         toPeg =   action[2]     # Extracting end peg
 
@@ -56,15 +56,21 @@ class hanoi:
                 self.peg[d, endPeg] = disc  # Put disc
                 break                       #
 
+
     def remove_disc(self, disc):
         self.peg[self.peg == disc] = 0
 
     def reward(self, state):
-        return 0  # Insert intelligent reward logic here
+        if not np.array_equal(state, self.final):
+            reward = -0.3          # 0.2, 0.3
+        else:
+            reward = 0
+        return reward
 
     # Check if the state is final
     def is_final(self, state):
-        if state == self.final:
+        if np.array_equal(state, self.final):
+            print("FINISHED")
             return True
         else:
             return False
@@ -75,7 +81,7 @@ class hanoi:
         Move:
         [Disc, FromPeg, ToPeg]
         #AuxPeg er den siste peggen som ikke blir brukt
-        [4,2,3]
+        [2,2,3]
         """
 
         moves = []          # Array for storing the available moves
@@ -121,4 +127,3 @@ class hanoi:
         self.peg[1, 0] = 2
         self.peg[2, 0] = 3
         self.peg[3, 0] = 4
-
