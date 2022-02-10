@@ -1,6 +1,5 @@
 import math
 import random
-
 import numpy as np
 
 class CartPole:
@@ -9,24 +8,33 @@ class CartPole:
         self.length = 0.5
         self.poleMass = 0.1
         self.cartMass = 1
-        self.g = 9.81                    # Gravity
+        self.g = 9.8                    # Gravity
 
         self.poleSpeed = 0              # First temporal derivative of pole angle
         self.poleAcc = 0                # Second temporal derivative of pole angle
         self.cartPos = 0                # Position of the cart
         self.cartSpeed = 0              # Velocity of the cart
         self.cartAcc = 0                # Cart acceleration
-        self.BB = 10                    # Bang bang force
+        self.BB = 1                    # Bang bang force
         self.maxMag = 0.21              # Maximum angle before it fails
         self.minPos = -2.4
         self.maxPos = 2.4
         self.timeStep = 0.02
         self.episodeLength = 300
 
-        self.poleAngle = random.uniform(-self.maxMag, self.maxMag)  # Pole angle (theta)
+        self.poleAngle_bin = 0
+        self.poleSpeed_bin = 0
+        self.cartPos_bin = 0
+        self.cartSpeed_bin = 0
+
+        self.poleAngle = random.uniform(-self.maxMag+0.1, self.maxMag-0.1)  # Pole angle (theta)
         self.poleSpeed = 0
 
-        self.actions = [-15, -10, -5, 0, -5, -10, -15]   # Predefined possible actions
+        #self.actions = [-15, -10, -5, 0, -5, -10, -15]   # Predefined possible actions
+        #self.actions = [-10, 0, 10]
+        self.actions = [-self.BB,0, self.BB]
+        #self.actions.append(-self.BB)
+        #self.actions.append(self.BB)
 
 
     def step(self, action):
@@ -36,11 +44,11 @@ class CartPole:
         # BB force is the variable acting here, pass it as a parameter?
 
         self.poleAcc = (self.g * np.sin(self.poleAngle) +
-                            (np.cos(self.poleAngle)*(-self.BB-self.poleMass*self.length*self.poleAcc*np.sin(self.poleAngle)))
+                            (np.cos(self.poleAngle)*(-self.BB-self.poleMass*self.length*self.poleSpeed**2*np.sin(self.poleAngle)))
                             /(self.poleMass + self.cartMass))\
                            /(self.length*(4/3 - (self.poleMass*np.cos(self.poleAngle)**2)/(self.poleMass + self.cartMass)))
 
-        self.cartAcc = (self.BB + self.poleMass*self.length*(self.poleSpeed**2*np.sin(self.poleAngle) - self.poleAcc(self.poleAngle) * np.cos(self.poleAngle)))\
+        self.cartAcc = (self.BB + self.poleMass*self.length*(self.poleSpeed**2*np.sin(self.poleAngle) - self.poleAcc * np.cos(self.poleAngle)))\
                        /(self.poleMass + self.cartMass)
 
         self.poleSpeed = self.poleSpeed + self.timeStep*self.poleAcc
@@ -51,31 +59,72 @@ class CartPole:
 
         self.cartPos = self.cartPos + self.timeStep*self.cartSpeed
 
-        return self.cartPos, self.cartSpeed, self.poleAngle, self.poleSpeed
+        reward = self.reward()
+
+        return self.get_state(), self.get_moves(), reward
+
 
     # Returning the possible actions
-    def get_actions(self):
+    def get_moves(self):
         return self.actions
 
-    def get_states(self, ):
+    def get_state(self):
+        state = None  # The state object to be saved into
         # x: +-0.8, +- 2.4
         # theta: 0, +-1, +-2, +-12
         # cartSpeed: 0.5, inf
         # poleSpeed: 50, inf
+        print([self.poleAngle, self.poleSpeed, self.cartPos, self.cartSpeed])
+        self.poleAngle_bin = np.digitize(self.poleAngle, [-0.24, -0.21, -0.18, -0.14, -0.10, -0.06, -0.03, 0, 0.03, 0.06, 0.10, 0.14, 0.18, 0.21, 0.24]) # 15 - 7 (best)
+        self.poleSpeed_bin = np.digitize(self.poleSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]) # 11 - 6 (best)
+        self.cartPos_bin = np.digitize(self.cartPos, [-2.4, -1.5, -0.8, 0, 0.8, 1.5, 2.4]) # 7  4 (best)
+        self.cartSpeed_bin = np.digitize(self.cartSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]) # 11 - 6 (best)
 
-        # 4*7*2*2 = 112 states
+        state = [self.poleAngle_bin, self.poleSpeed_bin, self.cartPos_bin, self.cartSpeed_bin]
+        return state
+
+    def reward(self):
+        # reward = 0
+        # if self.poleAngle_bin == 0:
+        #     reward = 1
+        # elif self.poleAngle_bin in [1, 2, 3, 4, 5]:
+        #     reward = 0
+        # else:
+        #     reward = -10
+        if self.cartPos_bin > 4:
+            cartPosDiff = 7 - self.cartPos_bin  # Offset
+        elif self.cartPos_bin <= 4:
+            cartPosDiff = 4 - self.cartPos_bin  # Offset
 
 
-    def map_discrete_state(self, cs):
-        """
-        Maps from a continuous state to a discrete state-space
-        :param cs:
-        :return:
-        """
+        if self.poleAngle_bin > 7:
+            poleAngleDiff = 15 - self.poleAngle_bin   # Offset
+        elif self.poleAngle_bin <= 7:
+            poleAngleDiff = 7 - self.poleAngle_bin    # Offset
+        reward = 30-poleAngleDiff - cartPosDiff
+        #reward = (1 - (cartPosDiff ** 2) / 11.52 + (poleAngleDiff ** 2) / 288)
+        print(reward)
+
+        return reward
 
 
+    def reset_problem(self):
+        print("RESETTT")
+        self.poleAngle = random.uniform(-self.maxMag, self.maxMag)  # Pole angle (theta)
+        self.poleSpeed = 0              # First temporal derivative of pole angle
+        self.poleAcc = 0                # Second temporal derivative of pole angle
 
-    def optimal_action(self):
+        self.cartPos = 0                # Position of the cart
+        self.cartSpeed = 0              # Velocity of the cart
+        self.cartAcc = 0                # Cart acceleration
+
+    def is_final(self, state):   # Continuous problem
+        if np.abs(self.poleAngle) > self.maxMag:
+            return True
+        else:
+            return False
+
+
 
 
 

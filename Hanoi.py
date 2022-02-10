@@ -22,6 +22,9 @@ class hanoi:
         self.peg[2, 0] = 3
         self.peg[3, 0] = 4
 
+        self.reward = 0
+        self.iterator = 0
+
         # Final state:
         self.final = np.zeros((self.n_discs, self.n_pegs))
         self.final[0, self.n_pegs-1] = 1
@@ -34,7 +37,7 @@ class hanoi:
         disc =    action[0]     # Extracting disc number
         toPeg =   action[2]     # Extracting end peg
 
-        reward = self.reward(self.peg)
+        reward = self.get_reward(self.peg)
         # Each step is punished by 1 (or float)
         # If steps > X - game is over (300 steps)
         # Give large reward when completing
@@ -43,6 +46,10 @@ class hanoi:
         # Perform action requested: [disc, fromPeg, toPeg]
         self.remove_disc(disc)       # Removes disc from original position
         self.put_disc(toPeg, disc)  # Puts disc on given peg (first available spot)
+
+        # self.iterator -= 0.1
+
+        # self.print_problem()
 
         #Return available actions and reward!!
         return self.peg, self.get_moves(), reward
@@ -60,12 +67,20 @@ class hanoi:
     def remove_disc(self, disc):
         self.peg[self.peg == disc] = 0
 
-    def reward(self, state):
+    def get_reward(self, state):
         if not np.array_equal(state, self.final):
-            reward = -0.3          # 0.2, 0.3
+            # reward = iterator # Penalty for timestep
+            # return -1
+            self.iterator -= 0.1
+            return self.iterator
+        # else:
+        #     return 0
         else:
-            reward = 0
-        return reward
+            return self.iterator
+        # else:
+        #     reward = 0
+        #print(reward)
+        # return reward
 
     # Check if the state is final
     def is_final(self, state):
@@ -74,7 +89,6 @@ class hanoi:
             return True
         else:
             return False
-
 
     def get_moves(self):
         """
@@ -119,7 +133,21 @@ class hanoi:
         return self.peg
 
     def print_problem(self):
-        print(self.peg)
+        for d in range(self.n_discs):  # Loop through all possible slots in peg
+            for p in range(self.n_pegs):  # Loop through all n_pegs
+                # print(self.peg[d, p])
+                disc = "-" * (int(self.peg[d, p]))
+                print(f"{disc:>{self.n_discs}}|{disc:{self.n_discs}}", end="\n")
+        # print(self.peg)
+        # height: int = self.n_discs
+        # for r in reversed(range(height)):
+        #     for peg in pegs:
+        #         disc = "-" * (0 if r >= len(peg) else peg[r])
+        #         print(f"{disc:>{height}}|{disc:{height}}", end=" ")
+        #     print()
+        # invalid = any(p[::-1] != sorted(p) for p in pegs)
+        # print("=" * (height * 6 + 5), "INVALID" * invalid)
+        print()
 
     def reset_problem(self):
         self.peg = np.zeros((self.n_discs, self.n_pegs))
@@ -127,3 +155,5 @@ class hanoi:
         self.peg[1, 0] = 2
         self.peg[2, 0] = 3
         self.peg[3, 0] = 4
+        self.reward = 0
+        self.iterator = 0

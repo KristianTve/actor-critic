@@ -2,13 +2,23 @@ from Hanoi import hanoi
 import numpy as np
 from RL import RL
 from gambler import gambler
+from CartPole import CartPole
 
 if __name__ == '__main__':
-    mode = "hanoi"
+    mode = "cartpole"
 
 
     if mode == "cartpole":
-        pass
+        crt = CartPole()
+        rl = RL()
+        rl.actor_critic(crt.get_state,
+                        crt.get_moves,
+                        crt.step,
+                        crt.reset_problem,
+                        crt.is_final,
+                        episodes=2200,
+                        time_steps=500,
+                        lr=0.01)
     if mode == "hanoi":
         hano = hanoi()
         rl = RL()
@@ -19,7 +29,7 @@ if __name__ == '__main__':
                         hano.is_final,
                         200,
                         300,
-                        0.1)
+                        0.001)
     if mode == "gambler":
         gmb = gambler()
         rl = RL()

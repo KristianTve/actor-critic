@@ -1,4 +1,5 @@
 import numbers
+from statistics import mean
 
 import numpy as np
 import random
@@ -12,9 +13,10 @@ class RL:
         self.aE = {}      # Eligibilities for the actor state, value pairs
         self.cE = {}      # Eligibilities for the critic states
 
-        self.discount = 0.99     # Discount factor
-        self.trace_decay = 0.8  # Factor for decaying trace updates
-        self.epsilon = 0.1      # Epsilon greedy factor probability for choosing a random action
+        self.discount = 0.95     # Discount factor  (1 for deterministic environments (Hanoi)
+        self.trace_decay = 0.4  # Factor for decaying trace updates
+        self.epsilon_original = 0.5      # Epsilon greedy factor probability for choosing a random action
+        self.epsilon = 1      # Epsilon greedy factor probability for choosing a random action
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
@@ -33,12 +35,20 @@ class RL:
 
         init_state = get_state()
         init_actions = get_actions()
+
         action = 0
         state = init_state
         action_prime = 0
         state_prime = 0
         TD_error = 0
         finished_counter = 0
+        runs = 0
+        total_runs = episodes * time_steps
+
+        iters_before_finished = []
+
+        min_iter = np.inf
+        max_iter = 0
 
         """*** Initializing V(s) and P(s,a) ***"""
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
@@ -50,6 +60,11 @@ class RL:
         """************************************"""
 
         for epi in range(episodes):
+            #self.epsilon = self.epsilon_original*((total_runs-runs)/total_runs)      # Decreasing epsilon
+            #print(self.epsilon)
+            self.epsilon *= 0.97
+            print(self.epsilon)
+
             state_action_buffer = []
             state_buffer = []
 
@@ -68,7 +83,10 @@ class RL:
 
             # Repeat for every step of the episode
             for iter in range(time_steps):
+                runs += 1
                 # Perform action and receive s' and new possible actions
+                if iter > max_iter:     # Save longest episode
+                    max_iter = iter
 
                 state_prime, new_actions, reward = do_action(action)
                 state_buffer.append(self.keyify(state))                     # Saves the state to buffer/trail (path) Keys that have been visited
@@ -86,7 +104,7 @@ class RL:
                 # Initialize critic table for state when it doesnt exist
                 if not self.keyify(state_prime) in self.V:
                     self.V[self.keyify(state_prime)] = random.uniform(0, 3)
-                    self.cE[self.keyify(state_prime)] = 0  # Initializing eligibility (critic)
+                    #self.cE[self.keyify(state_prime)] = 0  # Initializing eligibility (critic)
 
                 # ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
                 action_prime = self.select_best_action(state_prime, new_actions)
@@ -118,32 +136,41 @@ class RL:
                 # Update s <-- s' and a <-- a'
                 state = state_prime
                 action = action_prime
-                print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter))
-                print(state)
+
+                if iters_before_finished:
+                    print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter) + " | Avg finished: " + str(mean(iters_before_finished)))
+                else:
+                    print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter))
+
+                #print(state)
+
                 if finished(state):      # Found the solution (s is the end state)
+                    if iter < min_iter:
+                        min_iter = iter
+                    iters_before_finished.append(iter)
                     finished_counter += 1
                     break
 
     def keyify(self, state, action=None):
-        if isinstance(state, numbers.Integral):
-            return str(state) if not action else str(state) + str(action)
-        else:
-            return str(state.flatten()) if not action else str(state.flatten()) + str(action)
+        return str(state) if not action else str(state) + str(action)
 
     def select_best_action(self, state, actions):
         best_action = 0
-        best_action_value = 0
-        random_num = random.randrange(0, 1)
+        best_action_value = -np.inf
+        random_num = np.random.uniform(0, 1)
 
         if not random_num < self.epsilon:
             for action in actions:
                 if self.P[self.keyify(state, action)] >= best_action_value:
                     best_action_value = self.P[self.keyify(state, action)]
                     best_action = action
+
         else:
-            return actions[random.randint(0, len(actions) - 1)]
+            return actions[np.random.randint(0, len(actions) - 1)]
         #if not best_action:
-        #    return actions[random.randint(0, len(actions)-1)]  # Hack (plz remove)
-        print(best_action)
+        #    print("YE")
+        #    return actions[np.random.randint(0, len(actions)-1)]  # Hack (plz remove)
+        #print(best_action)
+
         return best_action
 
