@@ -13,35 +13,42 @@ class gambler:
 
         self.money = random.randint(1, 99)
 
-
-
-
     def step(self, action):
         self.wager = action
 
+        print("Start Wager: " + str(self.wager))
+        print("Start Money: " + str(self.money))
+
         if self.coin_flip():
             self.money += self.wager        # Gets dat money back man
+            print("WIN")
         else:
             self.money -= self.wager        # Looses the money
+            print("loss")
 
         reward = self.get_reward()
+
+        print("Money: " + str(self.money))
 
         return self.get_state(), self.get_actions(), reward
 
     def get_actions(self):
-        actions = []
         # Cannot pick more than it takes to win
         max = 100 - self.money
         if max > self.money:
             max = self.money
 
-        return np.arange(1, max+1)
+        bets = np.arange(1, max+1)
+        np.random.shuffle(bets)
+
+        return bets
 
     def get_state(self):
-        return self.money
+        #return self.money
+        return str(self.money)+"."
 
     def coin_flip(self):
-        return True if random.randrange(0, 1) < self.win_prob else False
+        return True if np.random.uniform(0, 1) < self.win_prob else False
 
     # Reward function
     def get_reward(self):

@@ -3,20 +3,22 @@ from statistics import mean
 
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+
 
 class RL:
 
-    def __init__(self):
+    def __init__(self, mode):
+        self.mode = mode
         self.P = {}       # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
         self.V = {}       # Dictionary for critic evaluations of STATES
 
-        self.aE = {}      # Eligibilities for the actor state, value pairs
-        self.cE = {}      # Eligibilities for the critic states
+        self.aE = {}      # Eligibility for the actor state, value pairs
+        self.cE = {}      # Eligibility for the critic states
 
-        self.discount = 0.95     # Discount factor  (1 for deterministic environments (Hanoi)
-        self.trace_decay = 0.4  # Factor for decaying trace updates
-        self.epsilon_original = 0.5      # Epsilon greedy factor probability for choosing a random action
-        self.epsilon = 1      # Epsilon greedy factor probability for choosing a random action
+        self.discount = 0.95         # Discount factor  (1 for deterministic environments (Hanoi)
+        self.trace_decay = 0.7       # Factor for decaying trace updates
+        self.epsilon = 0.6           # Epsilon greedy factor probability for choosing a random action
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
@@ -52,15 +54,12 @@ class RL:
 
         """*** Initializing V(s) and P(s,a) ***"""
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
-        for action in init_actions:
-            self.P[self.keyify(init_state, action)] = 0  # State, action value initialization
-
-        # Initialize V(s) with small random values   (critic)
-        self.V[self.keyify(init_state)] = random.uniform(0, 3)
+        self.initialize_actor_critic(state, init_actions)
         """************************************"""
 
         for epi in range(episodes):
-            self.epsilon *= 0.97 # Degrading the epsilon value for each episode
+            if self.epsilon >= 0.001:
+                self.epsilon *= 0.97 # Degrading the epsilon value for each episode
             print(self.epsilon)
 
             state_action_buffer = []
@@ -78,6 +77,7 @@ class RL:
                 reset()     # Resets the problem space for a new episode
                 state = get_state()  # Transfers initial state to recursive variable
                 init_actions = get_actions()
+                self.initialize_actor_critic(state, init_actions)
             else:
                 state = init_state  # If it is first run, use initial state
 
@@ -115,7 +115,8 @@ class RL:
                     self.V[self.keyify(state)] = np.random.uniform(0, 3)  # State value initialization
 
                 # ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
-                action_prime = self.select_best_action(state_prime, new_actions)
+                if len(new_actions):
+                    action_prime = self.select_best_action(state_prime, new_actions)
 
                 # ACTOR: e(s,a) <-- 1 (update eligibility for policy to 1)
                 self.aE[self.keyify(state, action)] = 1
@@ -158,6 +159,8 @@ class RL:
                     iters_before_finished.append(iter)
                     finished_counter += 1
                     break
+            if epi % 500 == 0:
+                self.print_gambler()
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
@@ -174,7 +177,51 @@ class RL:
                     best_action = action
 
         else:
-            return actions[np.random.randint(0, len(actions) - 1)]
+            return actions[np.random.randint(0, len(actions) - 1)] if (len(actions) != 1) else actions[0]
 
         return best_action
+
+
+
+
+    def print_cartpole(self):
+        pass
+
+    def print_hanoi(self):
+        plt.plot([self.runs], self.iter)
+        plt.show()
+        pass
+
+    def print_gambler(self):
+        array = []
+        print(self.P)
+        for state in np.arange(1, 100):
+            state = str(state)+"."
+            best = 0
+            for action in np.arange(1, 100):
+                if self.keyify(state, action) in self.P:
+                    if self.P[self.keyify(state, action)] > best:
+                        best = action
+            array.append(best)
+        plt.plot(array)
+        plt.show()
+
+    def mode_selector(self):
+        if self.mode == "cartpole":
+            self.print_cartpole()
+        elif self.mode == "hanoi":
+            self.print_hanoi()
+        elif self.mode == "gambler":
+            self.print_gambler()
+
+    # Initializes the dictionaries for actor and critic
+    def initialize_actor_critic(self, state, actions):
+        for action in actions:
+            if not self.keyify(state, action) in self.P:
+                self.P[self.keyify(state, action)] = 0  # State, action value initialization
+
+        # Initialize V(s) with small random values   (critic)
+        if not self.keyify(state) in self.V:
+            self.V[self.keyify(state)] = random.uniform(0, 3)
+
 
