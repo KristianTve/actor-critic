@@ -60,9 +60,7 @@ class RL:
         """************************************"""
 
         for epi in range(episodes):
-            #self.epsilon = self.epsilon_original*((total_runs-runs)/total_runs)      # Decreasing epsilon
-            #print(self.epsilon)
-            self.epsilon *= 0.97
+            self.epsilon *= 0.97 # Degrading the epsilon value for each episode
             print(self.epsilon)
 
             state_action_buffer = []
@@ -73,22 +71,29 @@ class RL:
                 self.aE[i] = 0
 
             # Reset eligibility with small    (critic)
-            for i in self.V.keys():
-                self.cE[i] = 0     #
+            for j in self.V.keys():
+                self.cE[j] = 0     #
 
-            reset()     # Resets the problem space for a new episode
-            state = init_state  # Transfers initial state to recursive variable
+            if not epi == 0:    # If any episode has been run already
+                reset()     # Resets the problem space for a new episode
+                state = get_state()  # Transfers initial state to recursive variable
+                init_actions = get_actions()
+            else:
+                state = init_state  # If it is first run, use initial state
+
             # Selecting best initial action by the policy
-            action = self.select_best_action(init_state, init_actions)
+            action = self.select_best_action(state, init_actions)
 
             # Repeat for every step of the episode
             for iter in range(time_steps):
-                runs += 1
+                runs += 1   # Just informative variable
+
                 # Perform action and receive s' and new possible actions
                 if iter > max_iter:     # Save longest episode
                     max_iter = iter
 
-                state_prime, new_actions, reward = do_action(action)
+                state_prime, new_actions, reward = do_action(action)        # Step function in the environments
+
                 state_buffer.append(self.keyify(state))                     # Saves the state to buffer/trail (path) Keys that have been visited
                 state_action_buffer.append(self.keyify(state, action))      # Saves the state and action to buffer/trail (path) Keys that have been visited
 
@@ -96,15 +101,18 @@ class RL:
                 for act in range(len(new_actions)):
                     if not self.keyify(state_prime, new_actions[act]) in self.P:
                         self.P[self.keyify(state_prime, new_actions[act])] = 0  # State, action value initialization
-                        #self.aE[self.keyify(state_prime, new_actions[act])] = 0     # Initializing eligibility (Actor)
+                        self.aE[self.keyify(state_prime, new_actions[act])] = 0     # Initializing eligibility (Actor)
 
                 if not self.keyify(state, action) in self.P:
                     self.P[self.keyify(state, action)] = 0  # State, action value initialization
 
                 # Initialize critic table for state when it doesnt exist
                 if not self.keyify(state_prime) in self.V:
-                    self.V[self.keyify(state_prime)] = random.uniform(0, 3)
-                    #self.cE[self.keyify(state_prime)] = 0  # Initializing eligibility (critic)
+                    self.V[self.keyify(state_prime)] = np.random.uniform(0, 3)
+                    self.cE[self.keyify(state_prime)] = 0  # Initializing eligibility (critic)
+
+                if not self.keyify(state) in self.V:
+                    self.V[self.keyify(state)] = np.random.uniform(0, 3)  # State value initialization
 
                 # ACTOR: a' <-- Π(s') the action dictated by the current policy for state s'
                 action_prime = self.select_best_action(state_prime, new_actions)
@@ -155,9 +163,9 @@ class RL:
         return str(state) if not action else str(state) + str(action)
 
     def select_best_action(self, state, actions):
-        best_action = 0
-        best_action_value = -np.inf
-        random_num = np.random.uniform(0, 1)
+        best_action = 0                 # Buffer for storing best action
+        best_action_value = -np.inf     # (Buffer) Mechanism for selecting a better policy than -inf
+        random_num = np.random.uniform(0, 1)    # Random number for epsilon greedy mechanism
 
         if not random_num < self.epsilon:
             for action in actions:
@@ -167,10 +175,6 @@ class RL:
 
         else:
             return actions[np.random.randint(0, len(actions) - 1)]
-        #if not best_action:
-        #    print("YE")
-        #    return actions[np.random.randint(0, len(actions)-1)]  # Hack (plz remove)
-        #print(best_action)
 
         return best_action
 
