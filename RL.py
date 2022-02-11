@@ -1,3 +1,4 @@
+import copy
 import numbers
 from statistics import mean
 
@@ -16,9 +17,15 @@ class RL:
         self.aE = {}      # Eligibility for the actor state, value pairs
         self.cE = {}      # Eligibility for the critic states
 
-        self.discount = 0.95         # Discount factor  (1 for deterministic environments (Hanoi)
-        self.trace_decay = 0.7       # Factor for decaying trace updates
-        self.epsilon = 0.6           # Epsilon greedy factor probability for choosing a random action
+        self.discount = 0.5         # Discount factor  (1 for deterministic environments (Hanoi)
+        self.trace_decay = 0.7       # Factor for decaying trace updates (HANOI: 0.5)
+        self.epsilon = 0.5           # Epsilon greedy factor probability for choosing a random action
+
+        self.runs = 0
+        self.epi = 0
+
+        self.arrayE = []        # Episodes
+        self.arrayR = []        # Runs before completion
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
@@ -58,9 +65,10 @@ class RL:
         """************************************"""
 
         for epi in range(episodes):
+            self.runs = 0
+            self.epi += 1
             if self.epsilon >= 0.001:
                 self.epsilon *= 0.97 # Degrading the epsilon value for each episode
-            print(self.epsilon)
 
             state_action_buffer = []
             state_buffer = []
@@ -86,7 +94,7 @@ class RL:
 
             # Repeat for every step of the episode
             for iter in range(time_steps):
-                runs += 1   # Just informative variable
+                self.runs += 1   # Just informative variable
 
                 # Perform action and receive s' and new possible actions
                 if iter > max_iter:     # Save longest episode
@@ -143,24 +151,31 @@ class RL:
                     self.aE[sta] = self.discount*self.trace_decay*self.aE[sta]  #  Decrease eligibility
 
                 # Update s <-- s' and a <-- a'
-                state = state_prime
-                action = action_prime
+                state = copy.deepcopy(state_prime)
+                action = copy.deepcopy(action_prime)
 
                 if iters_before_finished:
                     print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter) + " | Avg finished: " + str(mean(iters_before_finished)))
                 else:
                     print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter))
 
-                #print(state)
-
                 if finished(state):      # Found the solution (s is the end state)
                     if iter < min_iter:
                         min_iter = iter
                     iters_before_finished.append(iter)
                     finished_counter += 1
+
+                    self.arrayE.append(int(self.epi))
+                    self.arrayR.append(int(self.runs))
+
                     break
-            if epi % 500 == 0:
-                self.print_gambler()
+
+                if iter == 299:
+                    self.arrayE.append(int(self.epi))
+                    self.arrayR.append(int(self.runs))
+
+            if epi % 500 == 0:      # Print func boi
+                self.print_hanoi()
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
@@ -185,30 +200,32 @@ class RL:
 
 
     def print_cartpole(self):
+        #TODO: get state from cartpole to show pole angle
+        #plt.plot(self.iter, self.pole_angle)
         pass
 
     def print_hanoi(self):
-        plt.plot([self.runs], self.iter)
+        plt.plot(self.arrayE, self.arrayR)
         plt.show()
-        pass
 
     def print_gambler(self):
         array = []
-        print(self.P)
         for state in np.arange(1, 100):
             state = str(state)+"."
             best = 0
+            best_action = 0
             for action in np.arange(1, 100):
                 if self.keyify(state, action) in self.P:
                     if self.P[self.keyify(state, action)] > best:
-                        best = action
-            array.append(best)
+                        best = self.P[self.keyify(state, action)]
+                        best_action = action
+            array.append(best_action)
         plt.plot(array)
         plt.show()
 
     def mode_selector(self):
         if self.mode == "cartpole":
-            self.print_cartpole()
+            self.print_hanoi()
         elif self.mode == "hanoi":
             self.print_hanoi()
         elif self.mode == "gambler":

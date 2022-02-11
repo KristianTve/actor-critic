@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class hanoi:
@@ -47,7 +48,7 @@ class hanoi:
         self.remove_disc(disc)       # Removes disc from original position
         self.put_disc(toPeg, disc)  # Puts disc on given peg (first available spot)
 
-        # self.iterator -= 0.1
+        # self.iterator +=1
 
         # self.print_problem()
 
@@ -69,18 +70,10 @@ class hanoi:
 
     def get_reward(self, state):
         if not np.array_equal(state, self.final):
-            # reward = iterator # Penalty for timestep
-            # return -1
-            self.iterator -= 0.1
-            return self.iterator
-        # else:
-        #     return 0
+            return -10
         else:
-            return self.iterator
-        # else:
-        #     reward = 0
-        #print(reward)
-        # return reward
+            return 0
+
 
     # Check if the state is final
     def is_final(self, state):
@@ -126,7 +119,6 @@ class hanoi:
                             break
                     if move:
                         moves.append(move)
-
         return moves
 
     def get_state(self):
@@ -148,6 +140,7 @@ class hanoi:
         # invalid = any(p[::-1] != sorted(p) for p in pegs)
         # print("=" * (height * 6 + 5), "INVALID" * invalid)
         print()
+
 
     def reset_problem(self):
         self.peg = np.zeros((self.n_discs, self.n_pegs))

@@ -15,7 +15,7 @@ class CartPole:
         self.cartPos = 0                # Position of the cart
         self.cartSpeed = 0              # Velocity of the cart
         self.cartAcc = 0                # Cart acceleration
-        self.BB = 1                    # Bang bang force
+        self.BB = 10                    # Bang bang force
         self.maxMag = 0.21              # Maximum angle before it fails
         self.minPos = -2.4
         self.maxPos = 2.4
@@ -30,9 +30,9 @@ class CartPole:
         self.poleAngle = random.uniform(-self.maxMag+0.1, self.maxMag-0.1)  # Pole angle (theta)
         self.poleSpeed = 0
 
-        #self.actions = [-15, -10, -5, 0, -5, -10, -15]   # Predefined possible actions
+        self.actions = [-15, -10, -5, 0, -5, -10, -15]   # Predefined possible actions
         #self.actions = [-10, 0, 10]
-        self.actions = [-self.BB,0, self.BB]
+        #self.actions = [-self.BB,0, self.BB]
         #self.actions.append(-self.BB)
         #self.actions.append(self.BB)
 
@@ -74,11 +74,11 @@ class CartPole:
         # theta: 0, +-1, +-2, +-12
         # cartSpeed: 0.5, inf
         # poleSpeed: 50, inf
-        print([self.poleAngle, self.poleSpeed, self.cartPos, self.cartSpeed])
+
         self.poleAngle_bin = np.digitize(self.poleAngle, [-0.24, -0.21, -0.18, -0.14, -0.10, -0.06, -0.03, 0, 0.03, 0.06, 0.10, 0.14, 0.18, 0.21, 0.24]) # 15 - 7 (best)
-        self.poleSpeed_bin = np.digitize(self.poleSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]) # 11 - 6 (best)
-        self.cartPos_bin = np.digitize(self.cartPos, [-2.4, -1.5, -0.8, 0, 0.8, 1.5, 2.4]) # 7  4 (best)
-        self.cartSpeed_bin = np.digitize(self.cartSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10]) # 11 - 6 (best)
+        self.poleSpeed_bin = np.digitize(self.poleSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # 11 - 6 (best)
+        self.cartPos_bin = np.digitize(self.cartPos, [-2.4, -1.5, -0.8, 0, 0.8, 1.5, 2.4])          # 7  4 (best)
+        self.cartSpeed_bin = np.digitize(self.cartSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # 11 - 6 (best)
 
         state = [self.poleAngle_bin, self.poleSpeed_bin, self.cartPos_bin, self.cartSpeed_bin]
         return state
@@ -101,15 +101,18 @@ class CartPole:
             poleAngleDiff = 15 - self.poleAngle_bin   # Offset
         elif self.poleAngle_bin <= 7:
             poleAngleDiff = 7 - self.poleAngle_bin    # Offset
-        reward = 30-poleAngleDiff - cartPosDiff
-        #reward = (1 - (cartPosDiff ** 2) / 11.52 + (poleAngleDiff ** 2) / 288)
-        print(reward)
 
-        return reward
+        #reward = 12 - poleAngleDiff - cartPosDiff
+        #return poleAngleDiff
+        #return (1 - (self.cartPos ** 2) / 11.52 - (self.poleAngle ** 2) / 288)
+        if abs(self.poleAngle) < 0.03:
+            return 0 if self.poleSpeed < 0 else 1
+        else:
+            return 0 if self.poleAngle < 0 else 1
+        #return reward
 
 
     def reset_problem(self):
-        print("RESETTT")
         self.poleAngle = random.uniform(-self.maxMag, self.maxMag)  # Pole angle (theta)
         self.poleSpeed = 0              # First temporal derivative of pole angle
         self.poleAcc = 0                # Second temporal derivative of pole angle
@@ -118,7 +121,7 @@ class CartPole:
         self.cartSpeed = 0              # Velocity of the cart
         self.cartAcc = 0                # Cart acceleration
 
-    def is_final(self, state):   # Continuous problem
+    def is_final(self, state=None):   # Continuous problem
         if np.abs(self.poleAngle) > self.maxMag:
             return True
         else:
