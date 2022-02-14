@@ -59,6 +59,8 @@ class CartPole:
 
         self.cartPos = self.cartPos + self.timeStep*self.cartSpeed
 
+        self.get_continuous_poleAngle()
+
         reward = self.reward()
 
         return self.get_state(), self.get_moves(), reward
@@ -102,13 +104,20 @@ class CartPole:
         elif self.poleAngle_bin <= 7:
             poleAngleDiff = 7 - self.poleAngle_bin    # Offset
 
-        #reward = 12 - poleAngleDiff - cartPosDiff
-        #return poleAngleDiff
-        #return (1 - (self.cartPos ** 2) / 11.52 - (self.poleAngle ** 2) / 288)
+        # reward = 12 - poleAngleDiff - cartPosDiff
+        # return poleAngleDiff
+        # return (1 - (self.cartPos ** 2) / 11.52 - (self.poleAngle ** 2) / 288)
+        #
+        ### THE GOLDEN BOI ###
         if abs(self.poleAngle) < 0.03:
-            return 0 if self.poleSpeed < 0 else 1
+           return 0 if self.poleSpeed < 0 else 1
         else:
-            return 0 if self.poleAngle < 0 else 1
+           return 0 if self.poleAngle < 0 else 1
+
+        # if abs(poleAngleDiff) < 1:
+        #     return 0 if poleSpeedDiff > 0 else 1
+        # else:
+        #     return 0 if poleAngleDiff > 0 else 1
         #return reward
 
 
@@ -126,6 +135,9 @@ class CartPole:
             return True
         else:
             return False
+
+    def get_continuous_poleAngle(self):
+        return self.poleAngle
 
 
 

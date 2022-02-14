@@ -6,6 +6,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 
+from CartPole import *
 
 class RL:
 
@@ -21,11 +22,14 @@ class RL:
         self.trace_decay = 0.7       # Factor for decaying trace updates (HANOI: 0.5)
         self.epsilon = 0.5           # Epsilon greedy factor probability for choosing a random action
 
-        self.runs = 0
-        self.epi = 0
+        self.epi = 0            # Episodes
+        self.runs = 0           # Runs before completion
 
         self.arrayE = []        # Episodes
         self.arrayR = []        # Runs before completion
+        self.arrayPA = []       # PoleAngle
+
+        self.continuous_state = None
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
         """
@@ -67,8 +71,7 @@ class RL:
         for epi in range(episodes):
             self.runs = 0
             self.epi += 1
-            if self.epsilon >= 0.001:
-                self.epsilon *= 0.97 # Degrading the epsilon value for each episode
+            self.epsilon *= 0.97 # Degrading the epsilon value for each episode
 
             state_action_buffer = []
             state_buffer = []
@@ -167,15 +170,24 @@ class RL:
 
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
+                    self.arrayPA.append(self.continuous_state())
 
                     break
 
                 if iter == 299:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
+                    self.arrayPA.append(self.continuous_state())
 
-            if epi % 500 == 0:      # Print func boi
-                self.print_hanoi()
+                # if self.mode == "cartpole":
+                #     self.arrayR.append(int(self.runs))
+                #     self.arrayPA.append(self.continuous_state())
+
+            #TODO: Fikse en renere måte å printe resultater på
+            #
+            if epi % 10 == 0:      # Print func boi
+                self.print_cartpole()
+
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
@@ -197,12 +209,9 @@ class RL:
         return best_action
 
 
-
-
     def print_cartpole(self):
-        #TODO: get state from cartpole to show pole angle
-        #plt.plot(self.iter, self.pole_angle)
-        pass
+        plt.plot(self.arrayPA, self.arrayR)
+        plt.show()
 
     def print_hanoi(self):
         plt.plot(self.arrayE, self.arrayR)
@@ -225,7 +234,7 @@ class RL:
 
     def mode_selector(self):
         if self.mode == "cartpole":
-            self.print_hanoi()
+            self.print_cartpole()
         elif self.mode == "hanoi":
             self.print_hanoi()
         elif self.mode == "gambler":
@@ -242,3 +251,7 @@ class RL:
             self.V[self.keyify(state)] = random.uniform(0, 3)
 
 
+    def smooth(self, y, box_pts):       # Function for removing noise out of plot (smoothing out)
+        box = np.ones(box_pts) / box_pts
+        y_smooth = np.convolve(y, box, mode='same')
+        return y_smooth
