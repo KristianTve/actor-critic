@@ -53,7 +53,7 @@ class hanoi:
         # self.print_problem()
 
         #Return available actions and reward!!
-        return self.peg, self.get_moves(), reward
+        return self.get_state(), self.get_moves(), reward
 
     def put_disc(self, endPeg, disc):
         """
@@ -122,7 +122,7 @@ class hanoi:
         return moves
 
     def get_state(self):
-        return self.peg
+        return self.peg.flatten()
 
     def print_problem(self):
         for d in range(self.n_discs):  # Loop through all possible slots in peg

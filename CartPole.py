@@ -8,7 +8,7 @@ class CartPole:
         self.length = 0.5
         self.poleMass = 0.1
         self.cartMass = 1
-        self.g = 9.8                    # Gravity
+        self.g = -9.8                    # Gravity
 
         self.poleSpeed = 0              # First temporal derivative of pole angle
         self.poleAcc = 0                # Second temporal derivative of pole angle
@@ -30,7 +30,7 @@ class CartPole:
         self.poleAngle = random.uniform(-self.maxMag+0.1, self.maxMag-0.1)  # Pole angle (theta)
         self.poleSpeed = 0
 
-        self.actions = [-15, -10, -5, 0, -5, -10, -15]   # Predefined possible actions
+        self.actions = [-15, -10, -5, 0, 5, 10, 15]   # Predefined possible actions
         #self.actions = [-10, 0, 10]
         #self.actions = [-self.BB,0, self.BB]
         #self.actions.append(-self.BB)
@@ -70,6 +70,9 @@ class CartPole:
     def get_moves(self):
         return self.actions
 
+    def get_continuous_state(self):
+        return [self.poleAngle, self.poleSpeed, self.cartPos, self.cartSpeed]
+
     def get_state(self):
         state = None  # The state object to be saved into
         # x: +-0.8, +- 2.4
@@ -79,7 +82,7 @@ class CartPole:
 
         self.poleAngle_bin = np.digitize(self.poleAngle, [-0.24, -0.21, -0.18, -0.14, -0.10, -0.06, -0.03, 0, 0.03, 0.06, 0.10, 0.14, 0.18, 0.21, 0.24]) # 15 - 7 (best)
         self.poleSpeed_bin = np.digitize(self.poleSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # 11 - 6 (best)
-        self.cartPos_bin = np.digitize(self.cartPos, [-2.4, -1.5, -0.8, 0, 0.8, 1.5, 2.4])          # 7  4 (best)
+        self.cartPos_bin = np.digitize(self.cartPos,     [-2.4, -1.5, -0.8, 0, 0.8, 1.5, 2.4])          # 7  4 (best)
         self.cartSpeed_bin = np.digitize(self.cartSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # 11 - 6 (best)
 
         state = [self.poleAngle_bin, self.poleSpeed_bin, self.cartPos_bin, self.cartSpeed_bin]

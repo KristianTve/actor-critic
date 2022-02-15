@@ -31,7 +31,7 @@ class RL:
 
         self.continuous_state = None
 
-    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
+    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr, get_continous_state=None):
         """
         This method should receive the current state and the possible actions as input
 
@@ -45,7 +45,7 @@ class RL:
         @param episodes - Number of episodes
         @param time_steps - Number of timesteps in an episode
         """
-
+        self.continuous_state = get_continous_state
         init_state = get_state()
         init_actions = get_actions()
 
@@ -179,14 +179,12 @@ class RL:
                     self.arrayR.append(int(self.runs))
                     self.arrayPA.append(self.continuous_state())
 
-                # if self.mode == "cartpole":
-                #     self.arrayR.append(int(self.runs))
-                #     self.arrayPA.append(self.continuous_state())
-
+            
             #TODO: Fikse en renere måte å printe resultater på
             #
-            if epi % 10 == 0:      # Print func boi
-                self.print_cartpole()
+            if epi % 50 == 0:      # Print func boi
+                
+                self.print_hanoi()
 
 
     def keyify(self, state, action=None):
