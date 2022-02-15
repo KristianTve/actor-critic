@@ -1,17 +1,18 @@
 from Hanoi import hanoi
 import numpy as np
-from NNCritic import RL
+from NNCritic import RLNN
+from RL import RL
 from gambler import gambler
 from CartPole import CartPole
-
+from config_manager import config_manager
 if __name__ == '__main__':
-    mode = "cartpole"
-    NN = True
+    config = config_manager()
+    mode, NN = config.get_main_params()
 
     if NN:
         if mode == "cartpole":
             crt = CartPole()
-            rl = RL("cartpole")
+            rl = RLNN("cartpole")
             rl.actor_critic(crt.get_state,
                             crt.get_moves,
                             crt.step,
@@ -23,7 +24,7 @@ if __name__ == '__main__':
                             get_continous_state=crt.get_continuous_poleAngle)
         if mode == "hanoi":
             hano = hanoi()
-            rl = RL("hanoi")
+            rl = RLNN("hanoi")
             rl.actor_critic(hano.get_state,
                             hano.get_moves,
                             hano.step,

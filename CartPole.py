@@ -86,7 +86,7 @@ class CartPole:
         self.cartSpeed_bin = np.digitize(self.cartSpeed, [-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # 11 - 6 (best)
 
         state = [self.poleAngle_bin, self.poleSpeed_bin, self.cartPos_bin, self.cartSpeed_bin]
-        return state
+        return np.array(state)
 
     def reward(self):
         # reward = 0

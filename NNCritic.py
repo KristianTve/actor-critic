@@ -7,14 +7,16 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+from config_manager import config_manager
 from tensorflow.keras import layers
 from typing import Any, List, Sequence, Tuple
 
 
-class RL:
+class RLNN:
 
     def __init__(self, mode):
+        self.config = config_manager()
+
         self.mode = mode
         self.P = {}  # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
 
@@ -33,11 +35,32 @@ class RL:
 
         self.NN = True  # Change this with config later
 
-        self.critic = NN(mode='hanoi', num_hidden_units=10)
         self.continuous_state = None
 
+        (self.layers,
+         self.input_neurons,
+         self.batch_size,
+         self.verbose,
+         self.layer_size,
+         self.layer_act,
+         self.optimizer) = self.config.fetch_net_data()
 
-    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr, get_continous_state=None):
+        (self.critic_lr,
+         self.actor_lr,
+         self.discount,
+         self.trace_decay,
+         self.epsilon) = self.config.fetch_actor_critic_data()
+
+        self.critic = NN(mode=mode,
+                         layers=self.layers,
+                         input_size=self.input_neurons,
+                         layer_size=self.layer_size,
+                         layer_act=self.layer_act,
+                         optimizer=self.optimizer,
+                         critic_lr=self.critic_lr)
+
+    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr,
+                     get_continous_state=None):
         """
         This method should receive the current state and the possible actions as input
 
@@ -67,12 +90,14 @@ class RL:
 
         iters_before_finished = []
 
+        training_cases = []
+
         min_iter = np.inf
         max_iter = 0
 
         """*** Initializing V(s) and P(s,a) ***"""
         # Initialize Π(s,a) <-- 0 ∀s,a (actor)
-        self.initialize_actor_critic(state, init_actions)
+        self.initialize_actor(state, init_actions)
         """************************************"""
 
         for epi in range(episodes):
@@ -83,6 +108,7 @@ class RL:
 
             state_action_buffer = []
             state_buffer = []
+            training_cases = []
 
             # Reset eligibilities for the actor and critic
             for i in self.P.keys():
@@ -92,7 +118,7 @@ class RL:
                 reset()  # Resets the problem space for a new episode
                 state = get_state()  # Transfers initial state to recursive variable
                 init_actions = get_actions()
-                self.initialize_actor_critic(state, init_actions)
+                self.initialize_actor(state, init_actions)
             else:
                 state = init_state  # If it is first run, use initial state
 
@@ -109,8 +135,10 @@ class RL:
 
                 state_prime, new_actions, reward = do_action(action)  # Step function in the environments
 
-                state_buffer.append(self.keyify(state))  # Saves the state to buffer/trail (path) Keys that have been visited
-                state_action_buffer.append(self.keyify(state, action))  # Saves the state and action to buffer/trail (path) Keys that have been visited
+                state_buffer.append(
+                    self.keyify(state))  # Saves the state to buffer/trail (path) Keys that have been visited
+                state_action_buffer.append(self.keyify(state,
+                                                       action))  # Saves the state and action to buffer/trail (path) Keys that have been visited
 
                 # Initialize policy when new (non existing) (s, a) pairs
                 for act in range(len(new_actions)):
@@ -128,24 +156,25 @@ class RL:
                 # ACTOR: e(s,a) <-- 1 (update eligibility for policy to 1)
                 self.aE[self.keyify(state, action)] = 1
 
-                # TODO: CRITIC: V(s')(predicted) and V(s)(true)
-                V_s_true = reward + self.discount*self.critic.predict(state_prime)
+                # CRITIC: V(s')(predicted) and V(s)(true)
+                V_s_true = reward + self.discount * self.critic.predict(state_prime).numpy()[0][0]
 
-                #self.critic.add_case(state, V_s_true)    # Adding case (features, target)
+                training_cases.append((state, V_s_true))  # Adding case (features, target)
 
-                # TODO: Train critic network on cases gathered during episode (one case at a time? Or batch)
-                #loss = self.critic.train_cases(state, V_s_true)
-                loss = self.critic.train_cases(state, V_s_true)
+                if self.runs % self.batch_size == 0 and self.runs != 0:
+                    # Train critic network on cases gathered during episode
+                    loss = self.critic.train_cases(training_cases)
 
-                loss = loss.history['loss'][0]
+                    loss = loss.history['loss'][0]  # Extract loss as float
 
-                for sta in state_action_buffer:
-                    # ACTOR: Calculate the new value for Π(s,a)
-                    self.P[sta] += lr * loss * self.aE[sta]     # TODO: MSE loss instead of TD_error?
+                    for sta in state_action_buffer:
+                        # ACTOR: Calculate the new value for Π(s,a)
+                        self.P[sta] += lr * loss * self.aE[sta]
 
-                    # ACTOR: Calculate the new lower eligibility
-                    self.aE[sta] = self.discount * self.trace_decay * self.aE[sta]  # Decrease eligibility
+                        # ACTOR: Calculate the new lower eligibility
+                        self.aE[sta] = self.discount * self.trace_decay * self.aE[sta]  # Decrease eligibility
 
+                    training_cases = []  # Reset training cases
                 # Update s <-- s' and a <-- a'
                 state = copy.deepcopy(state_prime)
                 action = copy.deepcopy(action_prime)
@@ -166,7 +195,7 @@ class RL:
 
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    if self.mode=="cartpole":
+                    if self.mode == "cartpole":
                         self.arrayPA.append(self.continuous_state())
 
                     break
@@ -174,23 +203,20 @@ class RL:
                 if iter == 299:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    if self.mode=="cartpole":
+                    if self.mode == "cartpole":
                         self.arrayPA.append(self.continuous_state())
 
-            if epi % 100 == 0:  # Print func boi
-                print(self.continuous_state())
+            if epi % 10 == 0:  # Print func boi
                 self.print_hanoi()
-
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
-
 
     def select_best_action(self, state, actions):
         best_action = 0  # Buffer for storing best action
         best_action_value = -np.inf  # (Buffer) Mechanism for selecting a better policy than -inf
         random_num = np.random.uniform(0, 1)  # Random number for epsilon greedy mechanism
-
+        np.random.shuffle(actions)
         if not random_num < self.epsilon:
             for action in actions:
                 if self.P[self.keyify(state, action)] >= best_action_value:
@@ -202,16 +228,13 @@ class RL:
 
         return best_action
 
-
     def print_cartpole(self):
         plt.plot(self.arrayPA, self.arrayR)
         plt.show()
 
-
     def print_hanoi(self):
         plt.plot(self.arrayE, self.arrayR)
         plt.show()
-
 
     def print_gambler(self):
         array = []
@@ -228,7 +251,6 @@ class RL:
         plt.plot(array)
         plt.show()
 
-
     def mode_selector(self):
         if self.mode == "cartpole":
             self.print_hanoi()
@@ -237,73 +259,75 @@ class RL:
         elif self.mode == "gambler":
             self.print_gambler()
 
-
     # Initializes the dictionaries for actor and critic
-    def initialize_actor_critic(self, state, actions):
+    def initialize_actor(self, state, actions):
         for action in actions:
             if not self.keyify(state, action) in self.P:
                 self.P[self.keyify(state, action)] = 0  # State, action value initialization
-
-
-
 
 
 class NN:
 
     def __init__(self,
                  mode,
-                 num_hidden_units: int):
+                 layers,
+                 input_size,
+                 layer_size,
+                 layer_act,
+                 optimizer,
+                 critic_lr):
 
         self.mode = mode
-        self.cases = []
+        self.optimizer = optimizer
+        self.critic_lr = critic_lr
 
-        self.common = layers.Dense(num_hidden_units, activation="relu")
-        self.critic = layers.Dense(1)
+        self.mode = mode
 
-        self.learning_rate = 0.5
+        # Input layer generation
+        inputs = tf.keras.Input(shape=(input_size,))
 
-        inputs = tf.keras.Input(shape=(4,), batch_size=1)
-        x = tf.keras.layers.Dense(6, activation=tf.nn.relu)(inputs)
-        y = tf.keras.layers.Dense(6, activation=tf.nn.relu)(x)
-        z = tf.keras.layers.Dense(6, activation=tf.nn.relu)(y)
-        outputs = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(z)
+        # Hidden layer generation
+        x = inputs
+        for i in range(layers):
+            print(layer_size[i])
+            x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.relu)(x)
+
+        # Output layer generation
+        if layer_act[layers] == "sigmoid":
+            outputs = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
+        else:
+            outputs = tf.keras.layers.Dense(1, activation=tf.nn.relu)(x)
+
+        # Creating the model
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs)
-        self.model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.001, name="SGD"), loss=tf.keras.metrics.mean_squared_error)
-        #self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss=tf.keras.metrics.mean_squared_error)
 
-        # self.criticNN = tf.keras.Sequential([
-        #     tf.keras.layers.Input((12,)),
-        #     tf.keras.layers.Dense(16, activation="relu", kernel_initializer="random_normal"),
-        #     tf.keras.layers.Dense(16, activation="relu", kernel_initializer="random_normal"),
-        #     tf.keras.layers.Dense(1)
-        # ]),
+        # Setting optimizer and compiling
+        if self.optimizer == "sgd":
+            self.model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=self.critic_lr, name="SGD"),
+                               loss=tf.keras.metrics.mean_squared_error)
+        if self.optimizer == "adam":
+            self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=self.critic_lr),
+                               loss=tf.keras.metrics.mean_squared_error)
 
-    def call(self, inputs: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        x = self.common(inputs)
-        return self.critic(x)
+    def predict(self, state):
+        state = np.array(state)
+        # for state in states:
+        if state.ndim == 2:
+            return self.model(tf.convert_to_tensor([state.flatten()]))
+        else:
+            return self.model(tf.convert_to_tensor([state]))
 
-    def predict(self, states):
-        #for state in states:
-        print(states)
-        return self.model(tf.convert_to_tensor([states]))
+    def train_cases(self, cases):
+        cases_flat = []
+        targets = []
+        for case in cases:
+            if case[0].ndim == 2:
+                cases_flat.append(case[0].flatten())
+            else:
+                cases_flat.append(case[0])
+            targets.append(case[1])
 
-    def neuralCritic(self):
-        pass
-
-    def reset_cases(self):
-        self.cases = []
-
-    def add_case(self, state, target):
-        self.cases.append(state, target)
-
-    def train_cases(self, case, y_true):
-        loss = 0
-        #loss = self.mse(y_true, y_pred)
-        #deltaW = self.learning_rate*(y_true - y_pred)
-        # TODO Implement loop for multiple cases
-
-        loss = self.model.fit(tf.convert_to_tensor([case]), y_true)
-
+        loss = self.model.fit(tf.convert_to_tensor(cases_flat), tf.convert_to_tensor(targets))
         return loss
 
     # loss function and its derivative

@@ -18,9 +18,9 @@ class RL:
         self.aE = {}      # Eligibility for the actor state, value pairs
         self.cE = {}      # Eligibility for the critic states
 
-        self.discount = 0.5         # Discount factor  (1 for deterministic environments (Hanoi)
+        self.discount = 0.5         # Discount factor  (1 for deterministic environments (Hanoi : 1)
         self.trace_decay = 0.7       # Factor for decaying trace updates (HANOI: 0.5)
-        self.epsilon = 0.5           # Epsilon greedy factor probability for choosing a random action
+        self.epsilon = 0.5           # Epsilon greedy factor probability for choosing a random action (HANOI: 1)
 
         self.epi = 0            # Episodes
         self.runs = 0           # Runs before completion
@@ -170,20 +170,21 @@ class RL:
 
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    self.arrayPA.append(self.continuous_state())
+                    if self.mode=="cartpole":
+                        self.arrayPA.append(self.continuous_state())
 
                     break
 
                 if iter == 299:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    self.arrayPA.append(self.continuous_state())
+                    if self.mode=="cartpole":
+                        self.arrayPA.append(self.continuous_state())
 
-            
+
             #TODO: Fikse en renere måte å printe resultater på
             #
             if epi % 50 == 0:      # Print func boi
-                
                 self.print_hanoi()
 
 
