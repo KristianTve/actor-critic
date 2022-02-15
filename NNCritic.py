@@ -2,6 +2,7 @@ import copy
 import numbers
 from statistics import mean
 
+import keras.optimizer_experimental.sgd
 import numpy as np
 import random
 import matplotlib.pyplot as plt
@@ -19,23 +20,24 @@ class RL:
 
         self.aE = {}  # Eligibility for the actor state, value pairs
 
-        self.discount = 0.5  # Discount factor  (1 for deterministic environments (Hanoi)
-        self.trace_decay = 0.7  # Factor for decaying trace updates (HANOI: 0.5)
-        self.epsilon = 0.5  # Epsilon greedy factor probability for choosing a random action
+        self.discount = 1  # Discount factor  (1 for deterministic environments (Hanoi)
+        self.trace_decay = 0.5  # Factor for decaying trace updates (HANOI: 0.5)
+        self.epsilon = 1  # Epsilon greedy factor probability for choosing a random action
 
         self.runs = 0
         self.epi = 0
 
         self.arrayE = []  # Episodes
         self.arrayR = []  # Runs before completion
+        self.arrayPA = []
 
         self.NN = True  # Change this with config later
 
         self.critic = NN(mode='hanoi', num_hidden_units=10)
+        self.continuous_state = None
 
 
-
-    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr):
+    def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr, get_continous_state=None):
         """
         This method should receive the current state and the possible actions as input
 
@@ -50,6 +52,7 @@ class RL:
         @param time_steps - Number of timesteps in an episode
         """
 
+        self.continuous_state = get_continous_state
         init_state = get_state()
         init_actions = get_actions()
 
@@ -126,13 +129,15 @@ class RL:
                 self.aE[self.keyify(state, action)] = 1
 
                 # TODO: CRITIC: V(s')(predicted) and V(s)(true)
-                V_s_true = reward + self.discount*self.critic.call(state_prime)
+                V_s_true = reward + self.discount*self.critic.predict(state_prime)
 
                 #self.critic.add_case(state, V_s_true)    # Adding case (features, target)
 
                 # TODO: Train critic network on cases gathered during episode (one case at a time? Or batch)
                 #loss = self.critic.train_cases(state, V_s_true)
                 loss = self.critic.train_cases(state, V_s_true)
+
+                loss = loss.history['loss'][0]
 
                 for sta in state_action_buffer:
                     # ACTOR: Calculate the new value for Π(s,a)
@@ -161,86 +166,87 @@ class RL:
 
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
+                    if self.mode=="cartpole":
+                        self.arrayPA.append(self.continuous_state())
 
                     break
 
                 if iter == 299:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
+                    if self.mode=="cartpole":
+                        self.arrayPA.append(self.continuous_state())
 
-            if epi % 500 == 0:  # Print func boi
+            if epi % 100 == 0:  # Print func boi
+                print(self.continuous_state())
                 self.print_hanoi()
 
 
-def keyify(self, state, action=None):
-    return str(state) if not action else str(state) + str(action)
+    def keyify(self, state, action=None):
+        return str(state) if not action else str(state) + str(action)
 
 
-def select_best_action(self, state, actions):
-    best_action = 0  # Buffer for storing best action
-    best_action_value = -np.inf  # (Buffer) Mechanism for selecting a better policy than -inf
-    random_num = np.random.uniform(0, 1)  # Random number for epsilon greedy mechanism
+    def select_best_action(self, state, actions):
+        best_action = 0  # Buffer for storing best action
+        best_action_value = -np.inf  # (Buffer) Mechanism for selecting a better policy than -inf
+        random_num = np.random.uniform(0, 1)  # Random number for epsilon greedy mechanism
 
-    if not random_num < self.epsilon:
-        for action in actions:
-            if self.P[self.keyify(state, action)] >= best_action_value:
-                best_action_value = self.P[self.keyify(state, action)]
-                best_action = action
-
-    else:
-        return actions[np.random.randint(0, len(actions) - 1)] if (len(actions) != 1) else actions[0]
-
-    return best_action
-
-
-def print_cartpole(self):
-    # TODO: get state from cartpole to show pole angle
-    # plt.plot(self.iter, self.pole_angle)
-    pass
-
-
-def print_hanoi(self):
-    plt.plot(self.arrayE, self.arrayR)
-    plt.show()
-
-
-def print_gambler(self):
-    array = []
-    for state in np.arange(1, 100):
-        state = str(state) + "."
-        best = 0
-        best_action = 0
-        for action in np.arange(1, 100):
-            if self.keyify(state, action) in self.P:
-                if self.P[self.keyify(state, action)] > best:
-                    best = self.P[self.keyify(state, action)]
+        if not random_num < self.epsilon:
+            for action in actions:
+                if self.P[self.keyify(state, action)] >= best_action_value:
+                    best_action_value = self.P[self.keyify(state, action)]
                     best_action = action
-        array.append(best_action)
-    plt.plot(array)
-    plt.show()
+
+        else:
+            return actions[np.random.randint(0, len(actions) - 1)] if (len(actions) != 1) else actions[0]
+
+        return best_action
 
 
-def mode_selector(self):
-    if self.mode == "cartpole":
-        self.print_hanoi()
-    elif self.mode == "hanoi":
-        self.print_hanoi()
-    elif self.mode == "gambler":
-        self.print_gambler()
+    def print_cartpole(self):
+        plt.plot(self.arrayPA, self.arrayR)
+        plt.show()
 
 
-# Initializes the dictionaries for actor and critic
-def initialize_actor_critic(self, state, actions):
-    for action in actions:
-        if not self.keyify(state, action) in self.P:
-            self.P[self.keyify(state, action)] = 0  # State, action value initialization
+    def print_hanoi(self):
+        plt.plot(self.arrayE, self.arrayR)
+        plt.show()
+
+
+    def print_gambler(self):
+        array = []
+        for state in np.arange(1, 100):
+            state = str(state) + "."
+            best = 0
+            best_action = 0
+            for action in np.arange(1, 100):
+                if self.keyify(state, action) in self.P:
+                    if self.P[self.keyify(state, action)] > best:
+                        best = self.P[self.keyify(state, action)]
+                        best_action = action
+            array.append(best_action)
+        plt.plot(array)
+        plt.show()
+
+
+    def mode_selector(self):
+        if self.mode == "cartpole":
+            self.print_hanoi()
+        elif self.mode == "hanoi":
+            self.print_hanoi()
+        elif self.mode == "gambler":
+            self.print_gambler()
+
+
+    # Initializes the dictionaries for actor and critic
+    def initialize_actor_critic(self, state, actions):
+        for action in actions:
+            if not self.keyify(state, action) in self.P:
+                self.P[self.keyify(state, action)] = 0  # State, action value initialization
 
 
 
-import tensorflow as tf
 
-from tensorflow.keras import layers
-from typing import Any, List, Sequence, Tuple
 
 class NN:
 
@@ -254,12 +260,16 @@ class NN:
         self.common = layers.Dense(num_hidden_units, activation="relu")
         self.critic = layers.Dense(1)
 
-        self.learning_rate = 0.05
+        self.learning_rate = 0.5
 
-        inputs = tf.keras.Input(shape=(12,))
-        x = tf.keras.layers.Dense(1, activation=tf.nn.relu)(inputs)
-        outputs = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
+        inputs = tf.keras.Input(shape=(4,), batch_size=1)
+        x = tf.keras.layers.Dense(6, activation=tf.nn.relu)(inputs)
+        y = tf.keras.layers.Dense(6, activation=tf.nn.relu)(x)
+        z = tf.keras.layers.Dense(6, activation=tf.nn.relu)(y)
+        outputs = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(z)
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs)
+        self.model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.001, name="SGD"), loss=tf.keras.metrics.mean_squared_error)
+        #self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss=tf.keras.metrics.mean_squared_error)
 
         # self.criticNN = tf.keras.Sequential([
         #     tf.keras.layers.Input((12,)),
@@ -274,6 +284,7 @@ class NN:
 
     def predict(self, states):
         #for state in states:
+        print(states)
         return self.model(tf.convert_to_tensor([states]))
 
     def neuralCritic(self):
@@ -287,11 +298,13 @@ class NN:
 
     def train_cases(self, case, y_true):
         loss = 0
-        y_pred = self.call(case)
         #loss = self.mse(y_true, y_pred)
         #deltaW = self.learning_rate*(y_true - y_pred)
         # TODO Implement loop for multiple cases
-        return self.model.train_on_batch(case, y_true)
+
+        loss = self.model.fit(tf.convert_to_tensor([case]), y_true)
+
+        return loss
 
     # loss function and its derivative
     def mse(self, y_true, y_pred):

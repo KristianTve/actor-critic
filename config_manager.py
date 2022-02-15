@@ -58,6 +58,7 @@ class config_manager:
             layer_min_weight.append(float(self.config['LAYER'+str(i+1)]['min_weight']))
             layer_max_weight.append(float(self.config['LAYER'+str(i+1)]['max_weight']))
             lr.append(float(self.config['LAYER'+str(i+1)]['lr']))
+
         layer_min_weight.append(float(self.config['OUTPUT']['min_weight']))
         layer_max_weight.append(float(self.config['OUTPUT']['max_weight']))
         lr.append(float(self.config['OUTPUT']['lr']))
