@@ -2,10 +2,13 @@ import math
 import random
 
 import numpy as np
-
+from config_manager import config_manager
 class gambler:
 
     def __init__(self, win_prob=0.4):
+        config = config_manager()
+
+        self.win_prob = config.get_gambler_params()
         self.wager = 0            # Amount of waged money
         self.win_prob = win_prob  # Chance of winning
         self.victory = 100        # Victory limit

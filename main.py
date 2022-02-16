@@ -33,6 +33,18 @@ if __name__ == '__main__':
                             2200,
                             300,
                             0.5)
+        if mode == "gambler":
+            gmb = gambler()
+            rl = RLNN("gambler")
+            rl.actor_critic(gmb.get_state,
+                            gmb.get_actions,
+                            gmb.step,
+                            gmb.reset,
+                            gmb.is_final,
+                            episodes=25000,
+                            time_steps=300,
+                            lr=0.2)
+
     else:
         if mode == "cartpole":
             crt = CartPole()

@@ -1,10 +1,13 @@
 import math
 import random
 import numpy as np
-
+from config_manager import config_manager
 class CartPole:
 
     def __init__(self):
+        config = config_manager()
+
+
         self.length = 0.5
         self.poleMass = 0.1
         self.cartMass = 1
@@ -27,14 +30,20 @@ class CartPole:
         self.cartPos_bin = 0
         self.cartSpeed_bin = 0
 
+
         self.poleAngle = random.uniform(-self.maxMag+0.1, self.maxMag-0.1)  # Pole angle (theta)
         self.poleSpeed = 0
 
         self.actions = [-15, -10, -5, 0, 5, 10, 15]   # Predefined possible actions
         #self.actions = [-10, 0, 10]
-        #self.actions = [-self.BB,0, self.BB]
+        #self.actions = [-self.BB, self.BB]
         #self.actions.append(-self.BB)
         #self.actions.append(self.BB)
+
+        (self.length,
+         self.poleMass,
+         self.g,
+         self.timeStep) = config.get_cartpole_params()
 
 
     def step(self, action):
@@ -58,8 +67,6 @@ class CartPole:
         self.poleAngle = self.poleAngle + self.timeStep*self.poleSpeed
 
         self.cartPos = self.cartPos + self.timeStep*self.cartSpeed
-
-        self.get_continuous_poleAngle()
 
         reward = self.reward()
 
@@ -137,7 +144,10 @@ class CartPole:
         if np.abs(self.poleAngle) > self.maxMag:
             return True
         else:
-            return False
+            if np.abs(self.cartPos) >= self.maxPos:
+                return True
+            else:
+                return False
 
     def get_continuous_poleAngle(self):
         return self.poleAngle

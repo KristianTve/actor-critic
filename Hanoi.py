@@ -1,14 +1,14 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-
+from config_manager import config_manager
 
 class hanoi:
 
     def __init__(self):
-        # hanoi big boi
-        self.n_pegs = 3  # Number of positions
-        self.n_discs = 4  # Number of discs
+        config = config_manager()
+        (self.n_pegs,
+         self.n_discs) = config.get_hanoi_params()
 
         """
         Looper gjennom finner 0 g
@@ -18,20 +18,17 @@ class hanoi:
         [4  0  0]        
         """
         self.peg = np.zeros((self.n_discs, self.n_pegs))
-        self.peg[0, 0] = 1
-        self.peg[1, 0] = 2
-        self.peg[2, 0] = 3
-        self.peg[3, 0] = 4
+        for i in range(self.n_discs):
+            self.peg[i, 0] = i+1
 
         self.reward = 0
         self.iterator = 0
 
         # Final state:
         self.final = np.zeros((self.n_discs, self.n_pegs))
-        self.final[0, self.n_pegs-1] = 1
-        self.final[1, self.n_pegs-1] = 2
-        self.final[2, self.n_pegs-1] = 3
-        self.final[3, self.n_pegs-1] = 4
+        for i in range(self.n_discs):
+            self.final[i, self.n_pegs-1] = i+1
+
 
     def step(self, action):
 
@@ -50,7 +47,7 @@ class hanoi:
 
         # self.iterator +=1
 
-        # self.print_problem()
+        self.print_problem()
 
         #Return available actions and reward!!
         return self.peg, self.get_moves(), reward
@@ -113,7 +110,7 @@ class hanoi:
                                 endPeg = k
                                 move = [disc[0], disc[1], endPeg]
                             break
-                        if j == 3:  # If not found any (reached bottom of array)
+                        if j == self.n_discs-1:  # If not found any (reached bottom of array)
                             endPeg = k
                             move = [disc[0], disc[1], endPeg]
                             break
@@ -126,27 +123,17 @@ class hanoi:
 
     def print_problem(self):
         for d in range(self.n_discs):  # Loop through all possible slots in peg
+            print("\r") # newline
             for p in range(self.n_pegs):  # Loop through all n_pegs
-                # print(self.peg[d, p])
                 disc = "-" * (int(self.peg[d, p]))
-                print(f"{disc:>{self.n_discs}}|{disc:{self.n_discs}}", end="\n")
-        # print(self.peg)
-        # height: int = self.n_discs
-        # for r in reversed(range(height)):
-        #     for peg in pegs:
-        #         disc = "-" * (0 if r >= len(peg) else peg[r])
-        #         print(f"{disc:>{height}}|{disc:{height}}", end=" ")
-        #     print()
-        # invalid = any(p[::-1] != sorted(p) for p in pegs)
-        # print("=" * (height * 6 + 5), "INVALID" * invalid)
+                print(f"{disc:>{self.n_discs}}|{disc:{self.n_discs}}", end="")
         print()
 
 
     def reset_problem(self):
         self.peg = np.zeros((self.n_discs, self.n_pegs))
-        self.peg[0, 0] = 1
-        self.peg[1, 0] = 2
-        self.peg[2, 0] = 3
-        self.peg[3, 0] = 4
+        for i in range(self.n_discs):
+            self.peg[i, 0] = i+1
+
         self.reward = 0
         self.iterator = 0

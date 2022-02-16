@@ -5,12 +5,12 @@ from statistics import mean
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-
-from CartPole import *
-
+from config_manager import config_manager
 class RL:
 
     def __init__(self, mode):
+        self.config = config_manager()
+
         self.mode = mode
         self.P = {}       # Dictionary for values associated with possible STATE & ACTION pairs  (policy eval for actor)
         self.V = {}       # Dictionary for critic evaluations of STATES
@@ -30,6 +30,15 @@ class RL:
         self.arrayPA = []       # PoleAngle
 
         self.continuous_state = None
+
+        (self.critic_lr,
+         self.actor_lr,
+         self.discount,
+         self.trace_decay,
+         self.epsilon,
+         self.episodes,
+         self.time_steps) = self.config.fetch_actor_critic_data()
+
 
     def actor_critic(self, get_state, get_actions, do_action, reset, finished, episodes, time_steps, lr, get_continous_state=None):
         """
@@ -68,13 +77,14 @@ class RL:
         self.initialize_actor_critic(state, init_actions)
         """************************************"""
 
-        for epi in range(episodes):
+        for epi in range(self.episodes):
             self.runs = 0
             self.epi += 1
             self.epsilon *= 0.97 # Degrading the epsilon value for each episode
 
             state_action_buffer = []
             state_buffer = []
+            self.episode_PA = []
 
             # Reset eligibilities for the actor and critic
             for i in self.P.keys():
@@ -96,7 +106,7 @@ class RL:
             action = self.select_best_action(state, init_actions)
 
             # Repeat for every step of the episode
-            for iter in range(time_steps):
+            for iter in range(self.time_steps):
                 self.runs += 1   # Just informative variable
 
                 # Perform action and receive s' and new possible actions
@@ -141,14 +151,14 @@ class RL:
                 # For all states and actions in the current episode
                 for st in state_buffer:
                     # CRITIC: Calculate new value for state S  V(s) <-- V(s) + lr*TDerror*eligibility(s)
-                    self.V[st] += lr * TD_error * self.cE[st]
+                    self.V[st] += self.critic_lr * TD_error * self.cE[st]
 
                     # CRITIC: Calculate new (lower) eligibility for state
                     self.cE[st] = self.discount * self.trace_decay * self.cE[st]  # Decrease eligibility
 
                 for sta in state_action_buffer:
                     # ACTOR: Calculate the new value for Π(s,a)
-                    self.P[sta] += lr*TD_error*self.aE[sta]
+                    self.P[sta] += self.actor_lr*TD_error*self.aE[sta]
 
                     # ACTOR: Calculate the new lower eligibility
                     self.aE[sta] = self.discount*self.trace_decay*self.aE[sta]  #  Decrease eligibility
@@ -162,6 +172,8 @@ class RL:
                 else:
                     print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter))
 
+                self.episode_PA.append(self.continuous_state())
+
                 if finished(state):      # Found the solution (s is the end state)
                     if iter < min_iter:
                         min_iter = iter
@@ -170,23 +182,25 @@ class RL:
 
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    if self.mode=="cartpole":
-                        self.arrayPA.append(self.continuous_state())
+                    if self.mode == "cartpole":
+                        if len(self.episode_PA) > len(self.arrayPA):
+                            self.arrayPA = self.episode_PA  # Storing longest episode pole angle
 
                     break
 
                 if iter == 299:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
-                    if self.mode=="cartpole":
-                        self.arrayPA.append(self.continuous_state())
-
+                    if self.mode == "cartpole":
+                        if len(self.episode_PA) > len(self.arrayPA):
+                            self.arrayPA = self.episode_PA  # Storing longest episode pole angle
 
             #TODO: Fikse en renere måte å printe resultater på
             #
             if epi % 50 == 0:      # Print func boi
-                self.print_hanoi()
-
+                self.mode_selector()
+        if self.mode == "cartpole":
+            self.print_cartpole()
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
@@ -209,7 +223,7 @@ class RL:
 
 
     def print_cartpole(self):
-        plt.plot(self.arrayPA, self.arrayR)
+        plt.plot(self.arrayPA)
         plt.show()
 
     def print_hanoi(self):
@@ -233,7 +247,7 @@ class RL:
 
     def mode_selector(self):
         if self.mode == "cartpole":
-            self.print_cartpole()
+            self.print_hanoi()
         elif self.mode == "hanoi":
             self.print_hanoi()
         elif self.mode == "gambler":

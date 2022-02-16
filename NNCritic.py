@@ -22,9 +22,9 @@ class RLNN:
 
         self.aE = {}  # Eligibility for the actor state, value pairs
 
-        self.discount = 1  # Discount factor  (1 for deterministic environments (Hanoi)
-        self.trace_decay = 0.5  # Factor for decaying trace updates (HANOI: 0.5)
-        self.epsilon = 1  # Epsilon greedy factor probability for choosing a random action
+        #self.discount = 1  # Discount factor  (1 for deterministic environments (Hanoi)
+        #self.trace_decay = 0.5  # Factor for decaying trace updates (HANOI: 0.5)
+        #self.epsilon = 1  # Epsilon greedy factor probability for choosing a random action
 
         self.runs = 0
         self.epi = 0
@@ -32,7 +32,7 @@ class RLNN:
         self.arrayE = []  # Episodes
         self.arrayR = []  # Runs before completion
         self.arrayPA = []
-
+        self.episode_PA = []  # Buffer for storing current episodes pole angle (for illustration only)
         self.NN = True  # Change this with config later
 
         self.continuous_state = None
@@ -49,7 +49,9 @@ class RLNN:
          self.actor_lr,
          self.discount,
          self.trace_decay,
-         self.epsilon) = self.config.fetch_actor_critic_data()
+         self.epsilon,
+         self.episodes,
+         self.time_steps) = self.config.fetch_actor_critic_data()
 
         self.critic = NN(mode=mode,
                          layers=self.layers,
@@ -100,15 +102,17 @@ class RLNN:
         self.initialize_actor(state, init_actions)
         """************************************"""
 
-        for epi in range(episodes):
+        for epi in range(self.episodes):
             self.runs = 0
             self.epi += 1
             if self.epsilon >= 0.001:
                 self.epsilon *= 0.97  # Degrading the epsilon value for each episode
-
+            print(self.epsilon)
             state_action_buffer = []
             state_buffer = []
             training_cases = []
+            TD_error_buffer = []
+            self.episode_PA = []
 
             # Reset eligibilities for the actor and critic
             for i in self.P.keys():
@@ -126,7 +130,7 @@ class RLNN:
             action = self.select_best_action(state, init_actions)
 
             # Repeat for every step of the episode
-            for iter in range(time_steps):
+            for iter in range(self.time_steps):
                 self.runs += 1  # Just informative variable
 
                 # Perform action and receive s' and new possible actions
@@ -157,23 +161,28 @@ class RLNN:
                 self.aE[self.keyify(state, action)] = 1
 
                 # CRITIC: V(s')(predicted) and V(s)(true)
-                V_s_true = reward + self.discount * self.critic.predict(state_prime).numpy()[0][0]
+                if self.mode == "gambler":
+                    V_s_true = reward + self.discount * self.critic.predict(int(float(state_prime))).numpy()[0][0]
+                    training_cases.append((int(float(state)), V_s_true))  # Adding case (features, target)
+                else:
+                    V_s_true = reward + self.discount * self.critic.predict(state_prime).numpy()[0][0]
+                    training_cases.append((state, V_s_true))  # Adding case (features, target)
 
-                training_cases.append((state, V_s_true))  # Adding case (features, target)
+                TD_error_buffer.append(V_s_true)
 
                 if self.runs % self.batch_size == 0 and self.runs != 0:
                     # Train critic network on cases gathered during episode
                     loss = self.critic.train_cases(training_cases)
-
                     loss = loss.history['loss'][0]  # Extract loss as float
+                    for TD_error in TD_error_buffer:
+                        for sta in state_action_buffer:
 
-                    for sta in state_action_buffer:
-                        # ACTOR: Calculate the new value for Π(s,a)
-                        self.P[sta] += lr * loss * self.aE[sta]
+                            # ACTOR: Calculate the new value for Π(s,a)
+                            self.P[sta] += self.actor_lr * TD_error * self.aE[sta]
 
-                        # ACTOR: Calculate the new lower eligibility
-                        self.aE[sta] = self.discount * self.trace_decay * self.aE[sta]  # Decrease eligibility
-
+                            # ACTOR: Calculate the new lower eligibility
+                            self.aE[sta] = self.discount * self.trace_decay * self.aE[sta]  # Decrease eligibility
+                    TD_error_buffer = []
                     training_cases = []  # Reset training cases
                 # Update s <-- s' and a <-- a'
                 state = copy.deepcopy(state_prime)
@@ -187,6 +196,8 @@ class RLNN:
                     print("Episode: " + str(epi) + " | " + "Iteration: " + str(iter) + " | " + str(
                         finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter))
 
+                self.episode_PA.append(self.continuous_state())
+
                 if finished(state):  # Found the solution (s is the end state)
                     if iter < min_iter:
                         min_iter = iter
@@ -196,7 +207,8 @@ class RLNN:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
                     if self.mode == "cartpole":
-                        self.arrayPA.append(self.continuous_state())
+                        if len(self.episode_PA) > len(self.arrayPA):
+                            self.arrayPA = self.episode_PA     # Storing longest episode pole angle
 
                     break
 
@@ -204,10 +216,13 @@ class RLNN:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
                     if self.mode == "cartpole":
-                        self.arrayPA.append(self.continuous_state())
+                        if len(self.episode_PA) > len(self.arrayPA):
+                            self.arrayPA = self.episode_PA      # Storing longest episode pole angle
 
-            if epi % 10 == 0:  # Print func boi
-                self.print_hanoi()
+            if epi % 50 == 0:  # Print func boi
+                self.mode_selector()
+        if self.mode == "cartpole":
+            self.print_cartpole()  # Printing pole angle
 
     def keyify(self, state, action=None):
         return str(state) if not action else str(state) + str(action)
@@ -229,8 +244,9 @@ class RLNN:
         return best_action
 
     def print_cartpole(self):
-        plt.plot(self.arrayPA, self.arrayR)
+        plt.plot(self.arrayPA)
         plt.show()
+
 
     def print_hanoi(self):
         plt.plot(self.arrayE, self.arrayR)
@@ -289,14 +305,24 @@ class NN:
         # Hidden layer generation
         x = inputs
         for i in range(layers):
-            print(layer_size[i])
-            x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.relu)(x)
+            if layer_act[i] == "relu":
+                x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.relu)(x)
+            elif layer_act[i] == "tanh":
+                x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.tanh)(x)
+            elif layer_act[i] == "sigmoid":
+                x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.sigmoid)(x)
+            else:
+                x = tf.keras.layers.Dense(layer_size[i], activation=tf.nn.relu)(x)
 
         # Output layer generation
         if layer_act[layers] == "sigmoid":
             outputs = tf.keras.layers.Dense(1, activation=tf.nn.sigmoid)(x)
-        else:
+        elif layer_act[layers] == "relu":
             outputs = tf.keras.layers.Dense(1, activation=tf.nn.relu)(x)
+        elif layer_act[layers] == "tanh":
+            outputs = tf.keras.layers.Dense(1, activation=tf.nn.tanh)(x)
+        else:
+            outputs = tf.keras.layers.Dense(1, activation=None)(x)
 
         # Creating the model
         self.model = tf.keras.Model(inputs=inputs, outputs=outputs)
@@ -321,7 +347,9 @@ class NN:
         cases_flat = []
         targets = []
         for case in cases:
-            if case[0].ndim == 2:
+            if isinstance(case[0], int):
+                cases_flat.append(case[0])
+            elif case[0].ndim == 2:
                 cases_flat.append(case[0].flatten())
             else:
                 cases_flat.append(case[0])

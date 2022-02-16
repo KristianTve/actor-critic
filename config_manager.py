@@ -4,7 +4,14 @@ import configparser
 class config_manager:
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read('config.ini')
+        #self.config.read('config_HAN.ini')
+        #self.config.read('config_HAN_NN.ini')
+
+        #self.config.read('config_CAR.ini')
+        self.config.read('config_CAR_NN.ini')
+
+        #self.config.read('config_GAM.ini')
+        #self.config.read('config_GAM_NN.ini')
 
         # Initializing variables in config
         self.layers = None
@@ -45,11 +52,33 @@ class config_manager:
         discount = self.config['GLOBALS']['discount']
         trace_decay = self.config['GLOBALS']['trace_decay']
         epsilon = self.config['GLOBALS']['epsilon']
+        episodes = self.config['GLOBALS']['episodes']
+        time_steps = self.config['GLOBALS']['time_steps']
 
-        return float(critic_lr), float(actor_lr), float(discount), float(trace_decay), float(epsilon)
+        return float(critic_lr), float(actor_lr), float(discount), float(trace_decay), float(epsilon), int(episodes), int(time_steps)
 
     def get_main_params(self):
         mode = self.config['MAIN']['mode']
         nn = self.config.getboolean('MAIN', 'NN')
 
         return mode, nn
+
+    def get_hanoi_params(self):
+        pegs = self.config['HANOI']['pegs']
+        discs = self.config['HANOI']['discs']
+
+        return int(pegs), int(discs)
+
+    def get_cartpole_params(self):
+        pole_length = self.config['CARTPOLE']['pole_length']
+        pole_mass = self.config['CARTPOLE']['pole_mass']
+        gravity = self.config['CARTPOLE']['gravity']
+        timestep = self.config['CARTPOLE']['timestep']
+
+        return float(pole_length), float(pole_mass), float(gravity), float(timestep)
+
+    def get_gambler_params(self):
+        win_prob = self.config['GAMBLER']['win_prob']
+
+        return float(win_prob)
+
