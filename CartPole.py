@@ -35,10 +35,6 @@ class CartPole:
         self.poleSpeed = 0
 
         self.actions = [-15, -10, -5, 0, 5, 10, 15]   # Predefined possible actions
-        #self.actions = [-10, 0, 10]
-        #self.actions = [-self.BB, self.BB]
-        #self.actions.append(-self.BB)
-        #self.actions.append(self.BB)
 
         (self.length,
          self.poleMass,
@@ -48,9 +44,7 @@ class CartPole:
 
     def step(self, action):
         self.BB = action  # If the correct force value is passed (-F to F)
-        # Her kommer algoritmen fra prosjekt dokumentet
-
-        # BB force is the variable acting here, pass it as a parameter?
+        # Algorithm from the actor-critic document:
 
         self.poleAcc = (self.g * np.sin(self.poleAngle) +
                             (np.cos(self.poleAngle)*(-self.BB-self.poleMass*self.length*self.poleSpeed**2*np.sin(self.poleAngle)))
@@ -103,16 +97,16 @@ class CartPole:
         #     reward = 0
         # else:
         #     reward = -10
-        if self.cartPos_bin > 4:
-            cartPosDiff = 7 - self.cartPos_bin  # Offset
-        elif self.cartPos_bin <= 4:
-            cartPosDiff = 4 - self.cartPos_bin  # Offset
+        #if self.cartPos_bin > 4:
+        #    cartPosDiff = 7 - self.cartPos_bin  # Offset
+        #elif self.cartPos_bin <= 4:
+        #    cartPosDiff = 4 - self.cartPos_bin  # Offset
 
 
-        if self.poleAngle_bin > 7:
-            poleAngleDiff = 15 - self.poleAngle_bin   # Offset
-        elif self.poleAngle_bin <= 7:
-            poleAngleDiff = 7 - self.poleAngle_bin    # Offset
+        #if self.poleAngle_bin > 7:
+        #    poleAngleDiff = 15 - self.poleAngle_bin   # Offset
+        #elif self.poleAngle_bin <= 7:
+        #    poleAngleDiff = 7 - self.poleAngle_bin    # Offset
 
         # reward = 12 - poleAngleDiff - cartPosDiff
         # return poleAngleDiff
