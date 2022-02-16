@@ -172,7 +172,8 @@ class RL:
                 else:
                     print("Episode: " + str(epi)+" | " + "Iteration: " + str(iter) + " | " + str(finished_counter) + " | Longest Episode: " + str(max_iter) + " | Shortest: " + str(min_iter))
 
-                self.episode_PA.append(self.continuous_state())
+                if self.mode == "cartpole":
+                    self.episode_PA.append(self.continuous_state())
 
                 if finished(state):      # Found the solution (s is the end state)
                     if iter < min_iter:
