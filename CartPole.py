@@ -112,6 +112,7 @@ class CartPole:
         # return poleAngleDiff
         # return (1 - (self.cartPos ** 2) / 11.52 - (self.poleAngle ** 2) / 288)
         #
+
         ### THE GOLDEN BOI ###
         if abs(self.poleAngle) < 0.03:
            return 0 if self.poleSpeed < 0 else 1

@@ -5,10 +5,10 @@ class config_manager:
     def __init__(self):
         self.config = configparser.ConfigParser()
         #self.config.read('config_HAN.ini')
-        self.config.read('config_HAN_NN.ini')
+        #self.config.read('config_HAN_NN.ini')
 
         #self.config.read('config_CAR.ini')
-        #self.config.read('config_CAR_NN.ini')
+        self.config.read('config_CAR_NN.ini')
 
         #self.config.read('config_GAM.ini')
         #self.config.read('config_GAM_NN.ini')

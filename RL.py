@@ -189,14 +189,13 @@ class RL:
 
                     break
 
-                if iter == 299:
+                if iter == self.time_steps-1:
                     self.arrayE.append(int(self.epi))
                     self.arrayR.append(int(self.runs))
                     if self.mode == "cartpole":
                         if len(self.episode_PA) > len(self.arrayPA):
                             self.arrayPA = self.episode_PA  # Storing longest episode pole angle
 
-            #TODO: Fikse en renere måte å printe resultater på
             #
             if epi % 50 == 0:      # Print func boi
                 self.mode_selector()
